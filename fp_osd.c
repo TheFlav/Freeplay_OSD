@@ -4,7 +4,7 @@ FreeplayTech On-screen (heads-up) display overlay
 This program is meant to run as daemon.
 When successufully started, pid.txt file is created, containing main program PID (deleted when program closes).
 Depending on default configuration, sending SIGUSR1 or SIGUSR2 signal to program will display the OSD.
-If properly configured, it does also display a low battery icon based on a GPIO input or use of a  power_supply compatible battery gauge IC.
+If properly configured, it does also display a low battery icon based on a GPIO input or use of a power_supply compatible battery gauge IC.
 
 Default settings mainly target FreeplayTech products but all variables you may want to play with can be set with program arguments.
 
@@ -648,7 +648,7 @@ static void program_usage(void){ //display help
 #if defined(USE_WIRINGPI) || defined(USE_GPIOD)
     fprintf(stderr,
     "\t-lowbat_gpio <PIN> (-1 to disable. Default:%d).\n"
-    "\t <0-1> (1 for active low. Default:%d).\n"
+    "\t-lowbat_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
     , lowbat_gpio, lowbat_gpio_reversed?1:0);
 #endif
     fprintf(stderr,
