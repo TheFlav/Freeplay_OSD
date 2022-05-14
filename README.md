@@ -13,7 +13,7 @@ Currently tested on Pi3, Zero 2.
 
 Credits goes where its due:
 - This project is inspirated by Retropie-open-OSD (https://github.com/vascofazza/Retropie-open-OSD).
-- Contain strait or modified code from Raspidmx (https://github.com/AndrewFromMelbourne/raspidmx).  
+- Contain modified and unmodified code from Raspidmx (https://github.com/AndrewFromMelbourne/raspidmx).  
 <br>
   
 ## Preview:
@@ -62,9 +62,9 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 
 ## Usage:
 ### Arguments:
-  (*) : Require program to be compiled with GPIO support (please refer to Preprocessor variables section).  
-  (*\*) : Relative or full path, invalid path to fully disable.  
-  (*\*\*) : file containing only numerical value.  
+  (\*) : Require program to be compiled with GPIO support (please refer to Preprocessor variables section).  
+  (\*\*) : Relative or full path, invalid path to fully disable.  
+  (\*\*\*) : file containing only numerical value.  
 
   - Common :
     * ``-h`` or ``-help`` : Show arguments list.  
@@ -72,11 +72,11 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     <br>
 
   - Low battery management :  
-    * ``-lowbat_gpio <GPIO_PIN>`` (*) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
-    * ``-lowbat_gpio_reversed <0-1>`` (*) : 0 for active high, 1 for active low.  
-    * ``-battery_rsoc <PATH>`` (*\*)(*\*\*) : Path to file containing current remaining percentage of battery.  
+    * ``-lowbat_gpio <GPIO_PIN>`` (\*) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
+    * ``-lowbat_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
+    * ``-battery_rsoc <PATH>`` (\*\*)(\*\*\*) : Path to file containing current remaining percentage of battery.  
     Default: ``/sys/class/power_supply/battery/capacity``  
-    * ``-battery_voltage <PATH>`` (*\*)(*\*\*) : Path to file containing current battery voltage (program can parse file with float/double format).  
+    * ``-battery_voltage <PATH>`` (\*\*)(\*\*\*) : Path to file containing current battery voltage (program can parse file with float/double format).  
     Default: ``/sys/class/power_supply/battery/voltage_now``  
     * ``-battery_volt_divider <NUM>`` : Divider to get actual voltage (1000 for millivolts as input).  
     * ``-lowbat_pos <tl/tr/bl/br>`` : Low battery icon position : Top Left,Right, Bottom Left,Right.  
@@ -104,17 +104,52 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     <br>
 
   - OSD data :  
-    * ``-rtc <PATH>`` (*\*) : Path used to check if RTC module installed.  
-    * ``-cpu_thermal <PATH>`` (*\*)(*\*\*) : Path to file containing current CPU temperature.  
+    * ``-rtc <PATH>`` (\*\*) : Path used to check if RTC module installed.  
+    * ``-cpu_thermal <PATH>`` (\*\*)(\*\*\*) : Path to file containing current CPU temperature.  
     Default: ``/sys/class/thermal/thermal_zone0/temp``  
-    * ``-backlight <PATH>`` (*\*)(*\*\*) : File containing backlight current value.  
-    * ``-backlight_max <PATH>`` (*\*)(*\*\*) : File containing backlight maximum value.  
+    * ``-backlight <PATH>`` (\*\*)(\*\*\*) : File containing backlight current value.  
+    * ``-backlight_max <PATH>`` (\*\*)(\*\*\*) : File containing backlight maximum value.  
 <br>
 
-### Specific behaves:
-todo  
+### Informations displayed on OSD:
+Notes: May change without notice, Displayed elements depends on current hardware setup.  
+
+- Time :  
+  If RTC module installed (and configured) or system time synchronized with NTC service, full time and date will be displayed.  
+  If not, system Uptime will be displayed instead.  
 <br>
 
+- Battery :  
+  Require a Battery gauge IC to be installed and configured.  
+  Please refer to ``-battery_rsoc <PATH>``, ``-battery_voltage <PATH>``, and ``-battery_volt_divider <NUM>`` arguments for custom paths.  
+  Displays percentage remaining and voltage depending on path validity.  
+<br>
+
+- System (only displays informations successfully recovered) :  
+  * CPU temperature and load.  
+  * Main memory, Used and Total memory (only displayed if total recovered).  
+  * GPU memory, Used and Total memory (only displayed if total recovered).  
+<br>
+
+- Backlight status :  
+  Please refer to ``-backlight <PATH>`` and ``-backlight_max <PATH>`` arguments for custom paths.  
+  Displayed only if valid backlight value recovered.  
+<br>
+
+- Network :  
+  Interfaces list with assigned IPv4 address.  
+  Not yet implement but could in the future: WiFi signal values.  
+<br>
+
+## Repository files
+- **res/** : Contain ressources linked to the program like icons and other.
+- **font.h** : Bitmap font from Raspidmx.
+- **fp_osd.h**/**fp_osd.c** : OSD program.
+- **compile.sh** : Compile example files.
+- **osd.sh**/**osdbar.sh** : Sample script to send signal to OSD program.
+<br><br>
+  
 ## Known issue(s)
 - Program closes if receiving undefined signal (into program code).  
+- In very rare instances, when program closes, a float exception can happen.  
 <br><br>
