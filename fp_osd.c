@@ -488,7 +488,10 @@ static bool html_to_uint32_color(char* html_color, uint32_t* rgba){ //convert ht
 
 static void tty_signal_handler(int sig){ //handle signal func
     if (debug){print_stderr("DEBUG: signal received: %d.\n", sig);}
-    if (sig != osd_signal){kill_requested = true;} else if (osd_start_time < 0){osd_start_time = get_time_double();} //full osd start time
+    if (sig != SIGUSR1 && sig != SIGUSR2){kill_requested = true; return;}
+    if (sig == SIGUSR1 && osd_start_time < 0){osd_start_time = get_time_double(); return;} //full osd start time
+    if (sig == SIGUSR2 && osd_header_start_time < 0){osd_header_start_time = get_time_double(); return;} //header osd
+    //if (sig != osd_signal){kill_requested = true;} else if (osd_start_time < 0){osd_start_time = get_time_double();}
 }
 
 static void program_close(void){ //regroup all close functs
@@ -549,8 +552,8 @@ static void program_usage(void){ //display help
     "\t-layer <NUM> (Dispmanx layer. Default:%u).\n"
     "\t-timeout <1-20> (Hide OSD after given duration. Default:%d).\n"
     "\t-check <1-120> (check rate in hz. Default:%d).\n"
-    "\t-signal <SIG> (signal to display full OSD, SIGUSR1:%d, SIGUSR2:%d. Default:%d).\n"
-    , display_number, osd_layer, osd_timeout, osd_check_rate, SIGUSR1, SIGUSR2, osd_signal);
+    //"\t-signal <SIG> (signal to display full OSD, SIGUSR1:%d, SIGUSR2:%d. Default:%d).\n"
+    , display_number, osd_layer, osd_timeout, osd_check_rate/*, SIGUSR1, SIGUSR2, osd_signal*/);
 
     fprintf(stderr,
     "\nOSD styling:\n"
@@ -562,6 +565,12 @@ static void program_usage(void){ //display help
     "\t-max_lines <1-999> (absolute lines count limit on screen. Default:%d).\n"
     "\t-text_padding <0-100> (text distance (px) to screen border. Default:%d).\n"
     , osd_color_bg_str, osd_color_text_str, osd_color_warn_str, osd_color_crit_str, osd_max_lines, osd_text_padding);
+
+    fprintf(stderr,
+    "\nHeader OSD specific:\n"
+    "\t-header_position <t/b> (top, bottom. Default:%s).\n"
+    "\t-header_height <1-100> (OSD height, percent of screen height. Default:%d).\n"
+    , osd_header_pos_str, osd_header_height_percent);
 
     fprintf(stderr,
     "\nOSD data:\n"
@@ -596,7 +605,6 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-battery_voltage") == 0){strncpy(battery_volt_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-battery_volt_divider") == 0){battery_volt_divider = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-lowbat_pos") == 0){strncpy(lowbat_pos_str, argv[++i], sizeof(lowbat_pos_str));
-
         } else if (strcmp(argv[i], "-lowbat_width") == 0){lowbat_width_percent = atoi(argv[++i]);
             if (int_constrain(&lowbat_width_percent, 1, 100) != 0){print_stderr("invalid -lowbat_width argument, reset to '%d', allow from '1' to '100' (incl.)\n", lowbat_width_percent);}
         } else if (strcmp(argv[i], "-lowbat_limit") == 0){lowbat_limit = atoi(argv[++i]);
@@ -612,8 +620,8 @@ int main(int argc, char *argv[]){
             if (int_constrain(&osd_timeout, 1, 20) != 0){print_stderr("invalid -timeout argument, reset to '%d', allow from '1' to '20' (incl.)\n", osd_timeout);}
         } else if (strcmp(argv[i], "-check") == 0){osd_check_rate = atoi(argv[++i]);
             if (int_constrain(&osd_check_rate, 1, 120) != 0){print_stderr("invalid -check argument, reset to '%d', allow from '1' to '120' (incl.)\n", osd_check_rate);}
-        } else if (strcmp(argv[i], "-signal") == 0){osd_signal = atoi(argv[++i]);
-            if (int_constrain(&osd_signal, SIGUSR1, SIGUSR2) != 0){print_stderr("invalid -signal argument, reset to '%d', allow from '%d' to '%d' (incl.)\n", osd_signal, SIGUSR1, SIGUSR2);}
+        //} else if (strcmp(argv[i], "-signal") == 0){osd_signal = atoi(argv[++i]);
+        //    if (int_constrain(&osd_signal, SIGUSR1, SIGUSR2) != 0){print_stderr("invalid -signal argument, reset to '%d', allow from '%d' to '%d' (incl.)\n", osd_signal, SIGUSR1, SIGUSR2);}
 
         //OSD styling
         } else if (strcmp(argv[i], "-bg_color") == 0){strncpy(osd_color_bg_str, argv[++i], sizeof(osd_color_bg_str));
@@ -624,6 +632,11 @@ int main(int argc, char *argv[]){
             if (int_constrain(&osd_max_lines, 1, 999) != 0){print_stderr("invalid -max_lines argument, reset to '%d', allow from '1' to '999' (incl.)\n", osd_max_lines);}
         } else if (strcmp(argv[i], "-text_padding") == 0){osd_text_padding = atoi(argv[++i]);
             if (int_constrain(&osd_text_padding, 0, 100) != 0){print_stderr("invalid -text_padding argument, reset to '%d', allow from '0' to '100' (incl.)\n", osd_text_padding);}
+
+        //Header OSD specific
+        } else if (strcmp(argv[i], "-header_position") == 0){strncpy(osd_header_pos_str, argv[++i], sizeof(osd_header_pos_str));
+        } else if (strcmp(argv[i], "-header_height") == 0){osd_header_height_percent = atoi(argv[++i]);
+            if (int_constrain(&osd_header_height_percent, 1, 100) != 0){print_stderr("invalid -header_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", osd_header_height_percent);}
 
         //OSD data
         } else if (strcmp(argv[i], "-rtc") == 0){strncpy(rtc_path, argv[++i], PATH_MAX-1);
@@ -651,7 +664,8 @@ int main(int argc, char *argv[]){
     signal(SIGINT, tty_signal_handler); //ctrl-c
     signal(SIGTERM, tty_signal_handler); //SIGTERM from htop or other, SIGKILL not work as program get killed before able to handle
     signal(SIGABRT, tty_signal_handler); //failure
-    signal(osd_signal, tty_signal_handler); //use signal SIGUSR1(30) as trigger to display full OSD
+    signal(SIGUSR1, tty_signal_handler); //use signal SIGUSR1 as trigger to display full OSD
+    signal(SIGUSR2, tty_signal_handler); //use signal SIGUSR2 as trigger to display header OSD
     atexit(program_close); at_quick_exit(program_close); //run on program exit
 
     //bcm init
@@ -719,7 +733,6 @@ int main(int argc, char *argv[]){
     }
 
 	//osd
-    //bool osd_displayed = false, osd_updated = false;
     double osd_downsizing = (double)display_height / (osd_text_padding * 2 + osd_max_lines * RASPIDMX_FONT_HEIGHT);
     int osd_width = ALIGN_TO_16((int)(display_width / osd_downsizing)), osd_height = ALIGN_TO_16((int)(display_height / osd_downsizing));
     print_stderr("osd resolution: %dx%d (%.4lfx)\n", osd_width, osd_height, (double)osd_width/display_width);
@@ -727,6 +740,18 @@ int main(int argc, char *argv[]){
     DISPMANX_ELEMENT_HANDLE_T osd_element = 0;
     DISPMANX_RESOURCE_HANDLE_T osd_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_width, osd_height, &vc_image_ptr);
     double osd_update_interval = 1. / osd_check_rate;
+
+    //osd header
+    DISPMANX_ELEMENT_HANDLE_T osd_header_element = 0;
+    DISPMANX_RESOURCE_HANDLE_T osd_header_resource = 0;
+    if (lowbat_resource > 0){
+        if (osd_header_pos_str[0]=='t'){; //top
+        } else {;} //bottom
+
+    }
+
+
+
 
     //debug
     //unsigned long long bench_loop_count = 0; //debug loop count per 2sec
@@ -737,26 +762,56 @@ int main(int argc, char *argv[]){
         double loop_start_time = get_time_double(); //loop start time
         dispmanx_update = vc_dispmanx_update_start(0); //start vc update
 
-        if (lowbat_resource > 0){ //low battery icon
-            if (loop_start_time - lowbat_blink_start_time > lowbat_blink){
-                if (!lowbat_displayed && (lowbat_gpio_check() || lowbat_sysfs())){ //add low battery icon
-                    lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer+2, &lowbat_rect_dest, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
-                    lowbat_displayed = true;
-                } else if (lowbat_displayed){ //remove low battery icon
-                    if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
-                    lowbat_displayed = false;
-                }
-                lowbat_blink_start_time = loop_start_time;
-            }
-        }
-
-        if (osd_resource > 0){ //osd
+        //if (){ //full osd
         //osd_start_time = loop_start_time; //debug
             if (osd_start_time > 0){
                 if (loop_start_time - osd_start_time > (double)osd_timeout){ //osd timeout
                     if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element); osd_element = 0;}
                     osd_start_time = -1.;
-                } else {osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);}
+                } else if (osd_header_start_time < 0 && osd_resource > 0){ //only if header osd not displayed
+                    osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
+                }
+            }
+        //}
+
+        //if (){ //header osd
+        //osd_header_start_time = loop_start_time; //debug
+            if (osd_header_start_time > 0){
+                if (loop_start_time - osd_header_start_time > (double)osd_timeout){ //osd timeout
+                    if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element); osd_header_element = 0;}
+                    print_stderr("header osd hide\n");
+                    osd_header_start_time = -1.;
+                } else if (osd_start_time < 0 && osd_header_resource > 0){ //only if full osd not displayed
+                    //osd_build_element(osd_header_resource, &osd_header_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
+                    print_stderr("header osd displayed\n");
+                }
+            }
+        //}
+
+        if (lowbat_resource > 0){ //low battery icon, disabled when header osd displayed
+            if (loop_start_time - lowbat_blink_start_time > lowbat_blink){
+if (lowbat_displayed || osd_header_start_time > 0){ //remove low battery icon
+                    if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
+                    lowbat_displayed = false;
+                } else if (!lowbat_displayed && (lowbat_gpio_check() || lowbat_sysfs())){ //add low battery icon
+                    lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer+2, &lowbat_rect_dest, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+                    lowbat_displayed = true;
+                }
+
+
+
+
+
+/*
+                if (!lowbat_displayed && (lowbat_gpio_check() || lowbat_sysfs())){ //add low battery icon
+                    lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer+2, &lowbat_rect_dest, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+                    lowbat_displayed = true;
+                } else if (lowbat_displayed || osd_header_start_time > 0){ //remove low battery icon
+                    if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
+                    lowbat_displayed = false;
+                }
+                */
+                lowbat_blink_start_time = loop_start_time;
             }
         }
 

@@ -69,7 +69,7 @@ static void program_usage(void); //display help
 const char program_version[] = "0.1a"; //program version
 const char dev_webpage[] = "https://github.com/TheFlav/Freeplay_OSD"; //dev website
 bool debug = true, kill_requested = false, already_killed = false;
-double program_start_time = .0, osd_start_time = -1.;
+double program_start_time = .0;
 char program_path[PATH_MAX] = {'\0'}, program_name[PATH_MAX] = {'\0'}; //full path to this program
 char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
 
@@ -77,14 +77,20 @@ char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
 int display_number = 0; //dispmanx display num
 int osd_layer = 10000; //dispmanx layer
 int osd_check_rate = 30; //osd check rate in hz
-int osd_signal = SIGUSR1; //trigger signal
+//int osd_signal = SIGUSR1; //trigger signal
 int osd_timeout = 5; //timeout in sec
 int osd_max_lines = 15; //max number of lines to display on screen without spacing
 int osd_text_padding = 5; //text distance to screen border
+double osd_start_time = -1.; //osd start time
 char osd_color_bg_str[9] = "00000050"; uint32_t osd_color_bg = 0; //background raw color (rgba)
 char osd_color_text_str[9] = "FFFFFF"; uint32_t osd_color_text = 0, osd_color_text_bg = 0; //text raw color (rgba)
 char osd_color_warn_str[9] = "FF7F27"; uint32_t osd_color_warn = 0; //warning text raw color (rgba)
 char osd_color_crit_str[9] = "EB3324"; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
+
+//header osd
+int osd_header_height_percent = 10; //height percent relative to screen height
+double osd_header_start_time = -1.; //osd start time
+char osd_header_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
 
 //osd: general
 char rtc_path[PATH_MAX] = "/sys/class/rtc/rtc0/"; //absolute path to rtc class

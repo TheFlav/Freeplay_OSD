@@ -20,6 +20,8 @@ Credits goes where its due:
 - Full OSD :  
   <img src="git_image/osd_full_01.png" width="320" title="Full OSD"/> <img src="git_image/osd_full_02.png" width="320" title="Full OSD w Low battery"/> 
   
+- Header OSD : Preimplement
+  
 - Low battery :  
   <img src="git_image/lowbatt_no_osd.png" width="320" title="Low battery no OSD"/> 
 <br>
@@ -94,7 +96,6 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-layer`` : Dispmanx layer (10000 by default to ensure it goes over everything else).  
     * ``-timeout <1-20>`` : Hide OSD after given duration.  
     * ``-check <1-120>`` : Signal/GPIO check interval in hz.  
-    * ``-signal <SIG>`` : Signal to display OSD (SIGUSR1 or SIGUSR2 depending on configuration).  
     <br>
 
   - OSD styling :  
@@ -107,6 +108,11 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-text_padding <0-100>`` : Text distance (px) to screen border in pixels.  
     <br>
 
+  - Header OSD specific : 
+    * ``-header_position <t/b>`` : OSD position : Top, Bottom.  
+    * ``-header_height <1-100>`` : OSD height in percent (relative to screen height).  
+    <br>
+
   - OSD data :  
     * ``-rtc <PATH>`` (\*\*) : Path used to check if RTC module installed.  
     * ``-cpu_thermal <PATH>`` (\*\*)(\*\*\*) : Path to file containing current CPU temperature.  
@@ -115,22 +121,24 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-backlight_max <PATH>`` (\*\*)(\*\*\*) : File containing backlight maximum value.  
 <br>
 
-### Informations displayed on OSD:
+### OSD informations:
 Notes: May change without notice, Displayed elements depends on current hardware setup.  
+Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for header OSD.  
+(F/H) : Full OSD and Header OSD.  
 
-- Time :  
+- Time (F/H) :  
   If RTC module installed (and configured) or system time synchronized with NTC service, full time and date will be displayed.  
   If not, system Uptime will be displayed instead.  
 <br>
 
-- Battery :  
+- Battery (F/H) :  
   Require a Battery gauge IC to be installed and configured.  
   Please refer to ``-battery_rsoc <PATH>``, ``-battery_voltage <PATH>``, and ``-battery_volt_divider <NUM>`` arguments for custom paths.  
   Displays percentage remaining and voltage depending on path validity.  
 <br>
 
 - System (only displays informations successfully recovered) :  
-  * CPU temperature and load.  
+  * CPU temperature and load (F/H).  
   * Main memory, Used and Total memory (only displayed if total recovered).  
   * GPU memory, Used and Total memory (only displayed if total recovered).  
 <br>
@@ -142,7 +150,7 @@ Notes: May change without notice, Displayed elements depends on current hardware
 
 - Network :  
   Interfaces list with assigned IPv4 address.  
-  Not yet implemented but could in the future: WiFi signal values.  
+  Not yet implemented but could in the future: WiFi signal values (F/H).  
 <br>
 
 ## Repository files
@@ -155,7 +163,8 @@ Notes: May change without notice, Displayed elements depends on current hardware
   
 ## Missing features
 Section to be considered as a pseudo todo.  
-- Small OSD version to display as header or footer.  
+- Small OSD to display as header or footer.  
+- Allow additionnal way to trigger OSD display, file or whatever.  
 - WiFi informations.
 <br><br>
 
