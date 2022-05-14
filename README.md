@@ -20,7 +20,8 @@ Credits goes where its due:
 - Full OSD :  
   <img src="git_image/osd_full_01.png" width="320" title="Full OSD"/> <img src="git_image/osd_full_02.png" width="320" title="Full OSD w Low battery"/> 
   
-- Header OSD : Preimplement
+- Tiny OSD :  
+  <img src="git_image/osd_tiny_01.png" width="320" title="Tiny OSD"/> 
   
 - Low battery :  
   <img src="git_image/lowbatt_no_osd.png" width="320" title="Low battery no OSD"/> 
@@ -108,9 +109,9 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-text_padding <0-100>`` : Text distance (px) to screen border in pixels.  
     <br>
 
-  - Header OSD specific : 
-    * ``-header_position <t/b>`` : OSD position : Top, Bottom.  
-    * ``-header_height <1-100>`` : OSD height in percent (relative to screen height).  
+  - Header/Footer tiny OSD : 
+    * ``-header_position <t/b>`` : Tiny OSD position : Top, Bottom.  
+    * ``-header_height <1-100>`` : Tiny OSD height in percent (relative to screen height).  
     <br>
 
   - OSD data :  
@@ -123,8 +124,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 
 ### OSD informations:
 Notes: May change without notice, Displayed elements depends on current hardware setup.  
-Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for header OSD.  
-(F/H) : Full OSD and Header OSD.  
+Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for Tiny OSD.  
+(F/H) : Full OSD and Tiny OSD.  
 
 - Time (F/H) :  
   If RTC module installed (and configured) or system time synchronized with NTC service, full time and date will be displayed.  
@@ -143,7 +144,7 @@ Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for header O
   * GPU memory, Used and Total memory (only displayed if total recovered).  
 <br>
 
-- Backlight status :  
+- Backlight status (F/H) :  
   Please refer to ``-backlight <PATH>`` and ``-backlight_max <PATH>`` arguments for custom paths.  
   Displayed only if valid backlight value recovered.  
 <br>
@@ -163,7 +164,6 @@ Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for header O
   
 ## Missing features
 Section to be considered as a pseudo todo.  
-- Small OSD to display as header or footer.  
 - Allow additionnal way to trigger OSD display, file or whatever.  
 - WiFi informations.
 <br><br>

@@ -42,11 +42,12 @@ Please refer to fp_osd.c for more informations.
 static double get_time_double(void); //get time in double (seconds), takes around 82 microseconds to run
 
 static void raspidmx_setPixelRGBA32(void* /*buffer*/, int /*buffer_width*/, int32_t /*x*/, int32_t /*y*/, uint32_t /*color*/); //modified version from Raspidmx
-static void raspidmx_drawCharRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, uint8_t /*c*/, uint32_t /*color*/, uint32_t* /*bg_color*/); //modified version from Raspidmx
-static void raspidmx_drawStringRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, const char* /*string*/, uint32_t /*color*/, uint32_t* /*bg_color*/); //modified version from Raspidmx
+static int32_t raspidmx_drawCharRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, uint8_t /*c*/, uint8_t* /*font_ptr*/, uint32_t /*color*/, uint32_t* /*bg_color*/); //modified version from Raspidmx, return end position of printed char
+static int32_t raspidmx_drawStringRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, const char* /*string*/, uint8_t* /*font_ptr*/, uint32_t /*color*/, uint32_t* /*bg_color*/); //modified version from Raspidmx, return end position of printed string
 
 static void buffer_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, uint32_t /*rgba_color*/); //fill buffer with given color
 static void buffer_rectangle_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/, int32_t /*w*/, int32_t /*h*/, uint32_t /*rgba_color*/); //fill rectangle with given color
+static void buffer_horizontal_line(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x1*/, int32_t /*x2*/, int32_t /*y*/, uint32_t /*rgba_color*/); //draw horizontal line
 
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* /*filename*/, VC_RECT_T* /*image_rect_ptr*/); //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
 
@@ -82,15 +83,17 @@ int osd_timeout = 5; //timeout in sec
 int osd_max_lines = 15; //max number of lines to display on screen without spacing
 int osd_text_padding = 5; //text distance to screen border
 double osd_start_time = -1.; //osd start time
-char osd_color_bg_str[9] = "00000050"; uint32_t osd_color_bg = 0; //background raw color (rgba)
-char osd_color_text_str[9] = "FFFFFF"; uint32_t osd_color_text = 0, osd_color_text_bg = 0; //text raw color (rgba)
+void *osd_buffer_ptr = NULL; //bitmap buffer pointer
+char osd_color_bg_str[9] = "00000050"; uint32_t osd_color_bg = 0, osd_color_text_bg = 0; //background raw color (rgba)
+char osd_color_text_str[9] = "FFFFFF"; uint32_t osd_color_text = 0, osd_color_separator = 0; //text raw color (rgba)
 char osd_color_warn_str[9] = "FF7F27"; uint32_t osd_color_warn = 0; //warning text raw color (rgba)
 char osd_color_crit_str[9] = "EB3324"; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
 
 //header osd
-int osd_header_height_percent = 10; //height percent relative to screen height
+int osd_header_height_percent = 6; //height percent relative to screen height
 double osd_header_start_time = -1.; //osd start time
 char osd_header_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
+void *osd_header_buffer_ptr = NULL; //bitmap buffer pointer
 
 //osd: general
 char rtc_path[PATH_MAX] = "/sys/class/rtc/rtc0/"; //absolute path to rtc class
@@ -130,7 +133,6 @@ uint32_t battery_volt_divider = 1000000; //divide voltage by given value to get 
 DISPMANX_DISPLAY_HANDLE_T dispmanx_display = 0; //display handle
 VC_DISPMANX_ALPHA_T dispmanx_alpha_from_src = {DISPMANX_FLAGS_ALPHA_FROM_SOURCE, 255, 0};
 uint32_t vc_image_ptr; //only here because of how dispmanx works, not used
-void *osd_buffer_ptr = NULL;
 
 
 
