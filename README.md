@@ -17,7 +17,12 @@ Credits goes where its due:
 <br>
   
 ## Preview:
-TODO realworld pics.  
+- Full OSD :  
+<img src="git_image/osd_full_01.png" width="320" title="Full OSD"/> 
+<img src="git_image/osd_full_02.png" width="320" title="Full OSD w Low battery"/> 
+  
+- Low battery :  
+<img src="git_image/lowbatt_no_osd.png" width="320" title="Low battery no OSD"/> 
 <br>
   
 ## Compilation:
