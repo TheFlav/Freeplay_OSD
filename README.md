@@ -51,7 +51,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 
   - libGPIOd support  
     ```
-    gcc -DUSE_GPIOD -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -l:libgpiod.a
+    gcc -DUSE_GPIOD -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lgpiod
     ```
 
   - no GPIO support  
@@ -81,7 +81,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-battery_volt_divider <NUM>`` : Divider to get actual voltage (1000 for millivolts as input).  
     * ``-lowbat_pos <tl/tr/bl/br>`` : Low battery icon position : Top Left,Right, Bottom Left,Right.  
     * ``-lowbat_width <1-100>`` : Low battery icon width in percent (relative to screen width).  
-    * ``-lowbat_limit <0-90>`` : Threshold to trigger low battery icon in percent (require valid -battery_rsoc argument path).  
+    * ``-lowbat_limit <0-90>`` : Threshold to trigger low battery icon in percent (require valid ``-battery_rsoc`` argument path).  
     * ``-lowbat_blink <0.1-10>`` : Low battery icon visible/hide interval in seconds.  
     <br>
 
@@ -138,17 +138,23 @@ Notes: May change without notice, Displayed elements depends on current hardware
 
 - Network :  
   Interfaces list with assigned IPv4 address.  
-  Not yet implement but could in the future: WiFi signal values.  
+  Not yet implemented but could in the future: WiFi signal values.  
 <br>
 
 ## Repository files
-- **res/** : Contain ressources linked to the program like icons and other.
-- **font.h** : Bitmap font from Raspidmx.
+- **res/** : Contain resources linked to the program like icons and other.
+- **font.h** : Bitmap font from Raspidmx project.
 - **fp_osd.h**/**fp_osd.c** : OSD program.
-- **compile.sh** : Compile example files.
+- **compile.sh** : Sample script to compile program.
 - **osd.sh**/**osdbar.sh** : Sample script to send signal to OSD program.
 <br><br>
   
+## Missing features
+Section to be considered as a pseudo todo.  
+- Small OSD version to display as header or footer.  
+- WiFi informations.
+<br><br>
+
 ## Known issue(s)
 - Program closes if receiving undefined signal (into program code).  
 - In very rare instances, when program closes, a float exception can happen.  
