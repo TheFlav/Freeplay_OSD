@@ -88,8 +88,8 @@ double osd_start_time = -1.; //osd start time
 void *osd_buffer_ptr = NULL; //bitmap buffer pointer
 char osd_color_bg_str[9] = "00000050"; uint32_t osd_color_bg = 0, osd_color_text_bg = 0; //background raw color (rgba)
 char osd_color_text_str[9] = "FFFFFF"; uint32_t osd_color_text = 0, osd_color_separator = 0; //text raw color (rgba)
-char osd_color_warn_str[9] = "FF7F27"; uint32_t osd_color_warn = 0; //warning text raw color (rgba)
-char osd_color_crit_str[9] = "EB3324"; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
+char osd_color_warn_str[9] = "ffa038"/*"FF7F27"*/; uint32_t osd_color_warn = 0; //warning text raw color (rgba)
+char osd_color_crit_str[9] = "f54638"/*"EB3324"*/; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
 
 //header osd
 bool osd_header_test = false; //force display of header OSD, for test purpose

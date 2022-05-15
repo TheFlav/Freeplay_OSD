@@ -814,7 +814,7 @@ int main(int argc, char *argv[]){
     program_get_path(argv, program_path, program_name); //get current program path and filename
 
     //program args parse, plus some failsafes
-    for(int i=1; i<argc; ++i){
+    for(int i=1; i<argc; i++){
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0){program_usage(); return EXIT_SUCCESS;
 
         //Low battery management
@@ -868,7 +868,7 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-backlight_max") == 0){strncpy(backlight_max_path, argv[++i], PATH_MAX-1);
 
         //Program
-        } else if (strcmp(argv[i], "-debug")){debug = atoi(argv[++i]) > 0;
+        } else if (strcmp(argv[i], "-debug") == 0){debug = atoi(argv[++i]) > 0;
         }
     }
     
