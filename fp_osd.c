@@ -231,6 +231,7 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
     if (osd_header_buffer_ptr == NULL){
         print_stderr("creating header osd bitmap buffer.\n");
         osd_header_buffer_ptr = calloc(1, osd_width * osd_height * 4);
+        if (osd_header_buffer_ptr != NULL){buffer_fill(osd_header_buffer_ptr, osd_width, osd_height, osd_color_bg);} //buffer reset
     }
 
     if (osd_header_buffer_ptr != NULL){ //valid bitmap buffer
@@ -253,7 +254,6 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
         //rtc/ntc/uptime data
         static uint32_t uptime_value_prev = UINT32_MAX; //redraw when seconds changes
         static bool time_rtc = false, time_ntc = false;
-
         if (!time_rtc && access(rtc_path, F_OK) == 0){time_rtc = true; //rtc check
         } else if (!time_ntc && access("/usr/bin/timedatectl", F_OK) == 0){ //ntc check
             filehandle = popen("timedatectl timesync-status", "r");
@@ -282,7 +282,7 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
         }
 
         if (draw_update){ //redraw
-            buffer_fill(osd_header_buffer_ptr, osd_width, osd_height, osd_color_text_bg); //buffer reset
+            buffer_fill(osd_header_buffer_ptr, osd_width, osd_height, osd_color_bg); //buffer reset
 
             //clock: right side (done first because buffer)
             text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
@@ -341,34 +341,55 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                 raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
             }
 
-            //wifi:right side (preimplement)
-/*
-            int32_t wifi_speed = 72, wifi_signal = 59;
-            const int32_t wifi_signal_steps[2] = {30,60}, wifi_speed_steps[2] = {5,38}; //critical, warn limits
-            if (wifi_speed > 0){
-                uint32_t tmp_color = osd_color_text;
-                if (wifi_speed < wifi_speed_steps[0]){tmp_color = osd_color_crit;} else if (wifi_speed < wifi_speed_steps[1]){tmp_color = osd_color_warn;}
-                sprintf(buffer, "%d", wifi_speed);
-
-                text_column_right -= 2 * RASPIDMX_FONT_WIDTH;
-                raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, "\5\6", osd_icon_font_ptr, tmp_color, NULL);
-
-                text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
-                raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, tmp_color, NULL);
-
-                if (wifi_signal > 0){
-                    tmp_color = osd_color_text;
-                    if (wifi_signal < wifi_signal_steps[0]){tmp_color = osd_color_crit;} else if (wifi_signal < wifi_signal_steps[1]){tmp_color = osd_color_warn;}
+            //wifi:right side
+            
+            if (access("/sbin/iw", F_OK) == 0){
+                int32_t wifi_speed = 0, wifi_signal = 0;
+                struct ifaddrs *ifap, *ifa;
+                if (getifaddrs(&ifap) == 0){
+                    for (ifa = ifap; ifa; ifa = ifa->ifa_next){
+                        if (!(ifa->ifa_flags & IFF_LOOPBACK) && ifa->ifa_addr->sa_family == AF_INET && ifa->ifa_addr){
+                            sprintf(buffer, "iw dev %s link 2> /dev/null", ifa->ifa_name); //build commandline
+                            filehandle = popen(buffer, "r");
+                            if(filehandle != NULL){
+                                while(fgets(buffer, 255, filehandle) != NULL){
+                                    if(wifi_signal == 0 && strstr(buffer, "signal") != NULL){sscanf(buffer, "%*[^0123456789]%d", &wifi_signal); //signal
+                                    }else if(wifi_speed == 0 && strstr(buffer, "bitrate") != NULL){sscanf(buffer, "%*[^0123456789]%d", &wifi_speed);} //speed
+                                    if (wifi_signal != 0 && wifi_speed != 0){break;}
+                                }
+                                pclose(filehandle);
+                            }
+                            if (wifi_speed != 0){break;}
+                        }
+                    }
                 }
+                freeifaddrs(ifap);
+            
+                if (wifi_speed > 0){
+                    const int32_t wifi_signal_steps[2] = {30,60}, wifi_speed_steps[2] = {5,38}; //critical, warn limits
+                    uint32_t tmp_color = osd_color_text;
+                    if (wifi_speed < wifi_speed_steps[0]){tmp_color = osd_color_crit;} else if (wifi_speed < wifi_speed_steps[1]){tmp_color = osd_color_warn;}
+                    sprintf(buffer, "%d", wifi_speed);
 
-                text_column_right -= RASPIDMX_FONT_WIDTH + 2;
-                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 4, osd_icon_font_ptr, tmp_color, NULL); //wifi icon
-                text_column_right -= RASPIDMX_FONT_WIDTH;
-                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
+                    text_column_right -= 2 * RASPIDMX_FONT_WIDTH;
+                    raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, "\5\6", osd_icon_font_ptr, tmp_color, NULL);
+                    text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
+                    raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, tmp_color, NULL);
+
+                    if (wifi_signal > 0){
+                        tmp_color = osd_color_text;
+                        if (wifi_signal > wifi_signal_steps[1]){tmp_color = osd_color_crit;} else if (wifi_signal > wifi_signal_steps[0]){tmp_color = osd_color_warn;}
+                    }
+
+                    text_column_right -= RASPIDMX_FONT_WIDTH + 2;
+                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 4, osd_icon_font_ptr, tmp_color, NULL); //wifi icon
+                    text_column_right -= RASPIDMX_FONT_WIDTH;
+                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
+                }
             }
-*/
 
-            buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, text_column_left - RASPIDMX_FONT_WIDTH/2, text_column_right + RASPIDMX_FONT_WIDTH/2, osd_height/2 - 1, osd_color_separator); //line between left and right separator
+            //line between left and right separator
+            buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, text_column_left - RASPIDMX_FONT_WIDTH/2, text_column_right + RASPIDMX_FONT_WIDTH/2, osd_height/2 - 1, osd_color_separator); 
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_header_buffer_ptr, &osd_rect) != 0){
@@ -377,7 +398,7 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                 vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width << 16, osd_height << 16);
                 VC_RECT_T osd_rect_dest; vc_dispmanx_rect_set(&osd_rect_dest, x, y, width, height);
                 if (*element == 0){
-                    *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer, &osd_rect_dest, resource, &osd_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+                    *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer + 3, &osd_rect_dest, resource, &osd_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
                     if (*element == 0){print_stderr("failed to add element.\n");}
                 } else {vc_dispmanx_element_modified(update, *element, &osd_rect_dest);}
             }
@@ -389,6 +410,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
     if (osd_buffer_ptr == NULL){
         print_stderr("creating osd bitmap buffer.\n");
         osd_buffer_ptr = calloc(1, osd_width * osd_height * 4);
+        if (osd_buffer_ptr != NULL){buffer_fill(osd_buffer_ptr, osd_width, osd_height, osd_color_bg);} //buffer reset
     }
 
     if (osd_buffer_ptr != NULL){ //valid bitmap buffer
@@ -494,7 +516,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
             //system: gpu memory
             static int32_t gpu_memory_total = 0;
             int32_t gpu_memory_free = -1, gpu_memory_used = -1;
-            if (access("/usr/bin/vcgencmd", F_OK) != -1){
+            if (access("/usr/bin/vcgencmd", F_OK) == 0){
                 static char* gpu_mem_cmd[4] = {"malloc_total", "reloc_total", "malloc", "reloc"}; int32_t memory[4] = {0};
                 for (int i=0; i<4; i++){
                     if (gpu_mem_cmd[i] != NULL){
@@ -573,7 +595,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
             #define network_data_limit 10
             typedef struct {
                 uint8_t count;
-                struct osd_if_struct {char name[IF_NAMESIZE]; char ipv4[16]; /*char ipv6[40]; int speed;*/ bool up;} interface[network_data_limit];
+                struct osd_if_struct {char name[IF_NAMESIZE]; char ipv4[16]; /*char ipv6[40];*/ int speed, signal; bool up;} interface[network_data_limit];
             } osd_network_data_t;
             osd_network_data_t osd_network_data = {0};
 
@@ -593,14 +615,42 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
             }
             freeifaddrs(ifap);
 
+            //wifi link speed and signal
+            if (access("/sbin/iw", F_OK) == 0){
+                for (int i=0; i<osd_network_data.count; i++){
+                    int* tmp_speed = &osd_network_data.interface[i].speed;
+                    int* tmp_signal = &osd_network_data.interface[i].signal;
+                    sprintf(buffer, "iw dev %s link 2> /dev/null", osd_network_data.interface[i].name); //build commandline
+                    filehandle = popen(buffer, "r");
+                    if(filehandle != NULL){
+                        while(fgets(buffer, 255, filehandle) != NULL){
+                            if(*tmp_signal == 0 && strstr(buffer, "signal") != NULL){sscanf(buffer, "%*[^0123456789]%d", tmp_signal); //signal
+                            }else if(*tmp_speed == 0 && strstr(buffer, "bitrate") != NULL){sscanf(buffer, "%*[^0123456789]%d", tmp_speed);} //speed
+                            if (*tmp_signal != 0 && *tmp_speed != 0){break;}
+                        }
+                        pclose(filehandle);
+                    }
+                }
+            }
+
             if (osd_network_data.count){
                 raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, "Network:", raspidmx_font_ptr, osd_color_text, &osd_color_text_bg);
                 text_column = osd_text_padding * 2 + RASPIDMX_FONT_WIDTH * 8;
                 for (int i=0; i<osd_network_data.count; i++){
                     struct osd_if_struct *ptr = &osd_network_data.interface[i];
-                    sprintf(buffer, "%s: %s\n", ptr->name, (ptr->ipv4[0]!='\0') ? ptr->ipv4 : "Unknown");
+                    sprintf(buffer, "%s: %s", ptr->name, (ptr->ipv4[0]!='\0') ? ptr->ipv4 : "Unknown");
                     raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, buffer, raspidmx_font_ptr, osd_color_text, &osd_color_text_bg);
                     text_y += RASPIDMX_FONT_HEIGHT;
+                    if (ptr->speed != 0 || ptr->signal != 0){
+                        uint32_t column_back = text_column;
+                        text_column += (strlen(ptr->name) + 2) * RASPIDMX_FONT_WIDTH;
+                        if (ptr->speed != 0 && ptr->signal != 0){sprintf(buffer, "%dMbits, %ddBm", ptr->speed, -(ptr->signal));
+                        } else if (ptr->speed != 0){sprintf(buffer, "%dMbits", ptr->speed);
+                        } else {sprintf(buffer, "%ddBm", ptr->signal);}
+                        raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, buffer, raspidmx_font_ptr, osd_color_text, &osd_color_text_bg);
+                        text_y += RASPIDMX_FONT_HEIGHT;
+                        text_column = column_back;
+                    }
                 }
                 text_y += osd_text_padding; text_column = osd_text_padding;
             }
@@ -612,7 +662,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
                 vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width << 16, osd_height << 16);
                 VC_RECT_T osd_rect_dest; vc_dispmanx_rect_set(&osd_rect_dest, x, y, width, height);
                 if (*element == 0){
-                    *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer, &osd_rect_dest, resource, &osd_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+                    *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer + 1, &osd_rect_dest, resource, &osd_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
                     if (*element == 0){print_stderr("failed to add element.\n");}
                 } else {vc_dispmanx_element_modified(update, *element, &osd_rect_dest);}
             }
@@ -660,7 +710,6 @@ static void tty_signal_handler(int sig){ //handle signal func
     if (sig != SIGUSR1 && sig != SIGUSR2){kill_requested = true; return;}
     if (sig == SIGUSR1 && osd_start_time < 0){osd_start_time = get_time_double(); return;} //full osd start time
     if (sig == SIGUSR2 && osd_header_start_time < 0){osd_header_start_time = get_time_double(); return;} //header osd
-    //if (sig != osd_signal){kill_requested = true;} else if (osd_start_time < 0){osd_start_time = get_time_double();}
 }
 
 static void program_close(void){ //regroup all close functs
@@ -714,6 +763,7 @@ static void program_usage(void){ //display help
     "\t-lowbat_width <1-100> (icon width, percent of screen width. Default:%d).\n"
     "\t-lowbat_limit <0-90> (threshold, used with -battery_rsoc. Default:%d).\n"
     "\t-lowbat_blink <0.1-10> (blink interval in sec. Default:%.1lf).\n"
+    "\t-lowbat_test (force display of low battery icon, for test purpose).\n"
     , battery_rsoc_path, battery_volt_path, battery_volt_divider, lowbat_pos_str, lowbat_width_percent, lowbat_limit, lowbat_blink);
 
     fprintf(stderr,
@@ -722,6 +772,8 @@ static void program_usage(void){ //display help
     "\t-layer <NUM> (Dispmanx layer. Default:%u).\n"
     "\t-timeout <1-20> (Hide OSD after given duration. Default:%d).\n"
     "\t-check <1-120> (check rate in hz. Default:%d).\n"
+    "\t-signal_file <PATH> (useful if you can't send signal to program. Should only contain '0', SIGUSR1 or SIGUSR2 value.).\n"
+    "\t-osd_test (full OSD display, for test purpose).\n"
     , display_number, osd_layer, osd_timeout, osd_check_rate);
 
     fprintf(stderr,
@@ -739,6 +791,7 @@ static void program_usage(void){ //display help
     "\nHeader OSD specific:\n"
     "\t-header_position <t/b> (top, bottom. Default:%s).\n"
     "\t-header_height <1-100> (OSD height, percent of screen height. Default:%d).\n"
+    "\t-osd_header_test (Tiny OSD display, for test purpose).\n"
     , osd_header_pos_str, osd_header_height_percent);
 
     fprintf(stderr,
@@ -779,6 +832,7 @@ int main(int argc, char *argv[]){
             if (int_constrain(&lowbat_limit, 0, 90) != 0){print_stderr("invalid -lowbat_limit argument, reset to '%d', allow from '0' to '90' (incl.)\n", lowbat_limit);}
         } else if (strcmp(argv[i], "-lowbat_blink") == 0){double tmp = atof(argv[++i]);
             if (tmp < 0.1 || tmp > 10.){print_stderr("invalid -lowbat_blink argument, reset to '%.1lf', allow from '1' to '10' (incl.)\n", lowbat_blink);} else {lowbat_blink = tmp;}
+        } else if (strcmp(argv[i], "-lowbat_test") == 0){lowbat_test = true; print_stderr("low battery icon will be displayed until program closes\n");
 
         //OSD display
         } else if (strcmp(argv[i], "-display") == 0){display_number = atoi(argv[++i]);
@@ -788,6 +842,8 @@ int main(int argc, char *argv[]){
             if (int_constrain(&osd_timeout, 1, 20) != 0){print_stderr("invalid -timeout argument, reset to '%d', allow from '1' to '20' (incl.)\n", osd_timeout);}
         } else if (strcmp(argv[i], "-check") == 0){osd_check_rate = atoi(argv[++i]);
             if (int_constrain(&osd_check_rate, 1, 120) != 0){print_stderr("invalid -check argument, reset to '%d', allow from '1' to '120' (incl.)\n", osd_check_rate);}
+        } else if (strcmp(argv[i], "-signal_file") == 0){strncpy(signal_path, argv[++i], PATH_MAX-1);
+        } else if (strcmp(argv[i], "-osd_test") == 0){osd_test = true; print_stderr("full OSD will be displayed until program closes\n");
 
         //OSD styling
         } else if (strcmp(argv[i], "-bg_color") == 0){strncpy(osd_color_bg_str, argv[++i], sizeof(osd_color_bg_str));
@@ -799,10 +855,11 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-text_padding") == 0){osd_text_padding = atoi(argv[++i]);
             if (int_constrain(&osd_text_padding, 0, 100) != 0){print_stderr("invalid -text_padding argument, reset to '%d', allow from '0' to '100' (incl.)\n", osd_text_padding);}
 
-        //Header OSD specific
+        //Tiny OSD specific
         } else if (strcmp(argv[i], "-header_position") == 0){strncpy(osd_header_pos_str, argv[++i], sizeof(osd_header_pos_str));
         } else if (strcmp(argv[i], "-header_height") == 0){osd_header_height_percent = atoi(argv[++i]);
             if (int_constrain(&osd_header_height_percent, 1, 100) != 0){print_stderr("invalid -header_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", osd_header_height_percent);}
+        } else if (strcmp(argv[i], "-osd_header_test") == 0){osd_header_test = true; print_stderr("tiny OSD will be displayed until program closes\n");
 
         //OSD data
         } else if (strcmp(argv[i], "-rtc") == 0){strncpy(rtc_path, argv[++i], PATH_MAX-1);
@@ -926,6 +983,13 @@ int main(int argc, char *argv[]){
         if (osd_header_pos_str[0]=='b'){osd_header_y = display_height - osd_header_height_dest;} //footer
     }
 
+    //signal file
+    bool allow_signal_file = false, signal_file_used = false;
+    if (signal_path[0] != '\0' && access(signal_path, R_OK) == 0){
+        print_stderr("monitoring file '%s' for signal\n", signal_path);
+        allow_signal_file = true;
+    }
+
     //debug
     //unsigned long long bench_loop_count = 0; //debug loop count per 2sec
     //double bench_start_time = -1.;
@@ -935,11 +999,20 @@ int main(int argc, char *argv[]){
         double loop_start_time = get_time_double(); //loop start time
         dispmanx_update = vc_dispmanx_update_start(0); //start vc update
 
+        if (allow_signal_file && !signal_file_used){ //check signal file value
+            int tmp_sig = 0;
+            FILE *filehandle = fopen(signal_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &tmp_sig); fclose(filehandle);}
+            if (tmp_sig == SIGUSR1 && osd_start_time < 0){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
+            } else if (tmp_sig == SIGUSR2 && osd_header_start_time < 0){osd_header_start_time = loop_start_time; signal_file_used = true;} //header osd
+        }
+
         //full osd
-        //osd_start_time = loop_start_time; //debug
+        //osd_test = true; //debug
+        if (osd_test){osd_start_time = loop_start_time;}
         if (osd_start_time > 0){
             if (loop_start_time - osd_start_time > (double)osd_timeout){ //osd timeout
                 if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element); osd_element = 0;}
+                if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                 osd_start_time = -1.;
             } else if (osd_header_start_time < 0 && osd_resource > 0){ //only if header osd not displayed
                 osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
@@ -947,23 +1020,27 @@ int main(int argc, char *argv[]){
         }
 
         //header osd
-        //osd_header_start_time = loop_start_time; //debug
+        //osd_header_test = true; //debug
+        if (osd_header_test){osd_header_start_time = loop_start_time;}
         if (osd_header_start_time > 0){
             if (loop_start_time - osd_header_start_time > (double)osd_timeout){ //osd timeout
                 if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element); osd_header_element = 0;}
+                if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                 osd_header_start_time = -1.;
             } else if (osd_start_time < 0 && osd_header_resource > 0){ //only if full osd not displayed
                 osd_header_build_element(osd_header_resource, &osd_header_element, dispmanx_update, osd_header_width, osd_header_height, 0, osd_header_y, display_width, osd_header_height_dest);
             }
         }
 
+        //low battery icon
+        //lowbat_test = true; //debug
         if (lowbat_resource > 0){ //low battery icon, disabled when header osd displayed
             if (loop_start_time - lowbat_blink_start_time > lowbat_blink){
                 if (lowbat_displayed || osd_header_start_time > 0){ //remove low battery icon
                     if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
                     lowbat_displayed = false;
-                } else if (!lowbat_displayed && (lowbat_gpio_check() || lowbat_sysfs())){ //add low battery icon
-                    lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer+2, &lowbat_rect_dest, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+                } else if (!lowbat_displayed && (lowbat_test || lowbat_gpio_check() || lowbat_sysfs())){ //add low battery icon
+                    if (lowbat_element == 0){lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer + 2, &lowbat_rect_dest, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);}
                     lowbat_displayed = true;
                 }
                 lowbat_blink_start_time = loop_start_time;

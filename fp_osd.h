@@ -73,15 +73,17 @@ bool debug = true, kill_requested = false, already_killed = false;
 double program_start_time = .0;
 char program_path[PATH_MAX] = {'\0'}, program_name[PATH_MAX] = {'\0'}; //full path to this program
 char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
+char signal_path[PATH_MAX] = {'\0'}; //full path to signal file
 
 //osd
 int display_number = 0; //dispmanx display num
-int osd_layer = 10000; //dispmanx layer
+int osd_layer = 10000; //dispmanx layer, full osd:+1, low battery:+2, tiny osd:+3
 int osd_check_rate = 30; //osd check rate in hz
 //int osd_signal = SIGUSR1; //trigger signal
 int osd_timeout = 5; //timeout in sec
 int osd_max_lines = 15; //max number of lines to display on screen without spacing
 int osd_text_padding = 5; //text distance to screen border
+bool osd_test = false; //force display of full OSD, for test purpose
 double osd_start_time = -1.; //osd start time
 void *osd_buffer_ptr = NULL; //bitmap buffer pointer
 char osd_color_bg_str[9] = "00000050"; uint32_t osd_color_bg = 0, osd_color_text_bg = 0; //background raw color (rgba)
@@ -90,6 +92,7 @@ char osd_color_warn_str[9] = "FF7F27"; uint32_t osd_color_warn = 0; //warning te
 char osd_color_crit_str[9] = "EB3324"; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
 
 //header osd
+bool osd_header_test = false; //force display of header OSD, for test purpose
 int osd_header_height_percent = 6; //height percent relative to screen height
 double osd_header_start_time = -1.; //osd start time
 char osd_header_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
@@ -104,6 +107,7 @@ char backlight_max_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight_max"; 
 #define memory_divider 1024 //divide memory by given value to get mB
 
 //osd: low battery
+bool lowbat_test = false; //force display of low battery icon, for test purpose
 bool lowbat_gpio_enabled = false; //use gpio pin, leave as is, defined during runtime
 #if defined(USE_WIRINGPI) || defined(USE_GPIOD) //low bat gpio
     bool lowbat_gpio_reversed = false; //gpio pin active low
@@ -133,8 +137,4 @@ uint32_t battery_volt_divider = 1000000; //divide voltage by given value to get 
 DISPMANX_DISPLAY_HANDLE_T dispmanx_display = 0; //display handle
 VC_DISPMANX_ALPHA_T dispmanx_alpha_from_src = {DISPMANX_FLAGS_ALPHA_FROM_SOURCE, 255, 0};
 uint32_t vc_image_ptr; //only here because of how dispmanx works, not used
-
-
-
-
 

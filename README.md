@@ -82,14 +82,15 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-lowbat_gpio <GPIO_PIN>`` (\*) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
     * ``-lowbat_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
     * ``-battery_rsoc <PATH>`` (\*\*)(\*\*\*) : Path to file containing current remaining percentage of battery.  
-    Default: ``/sys/class/power_supply/battery/capacity``  
+      Default: ``/sys/class/power_supply/battery/capacity``  
     * ``-battery_voltage <PATH>`` (\*\*)(\*\*\*) : Path to file containing current battery voltage (program can parse file with float/double format).  
-    Default: ``/sys/class/power_supply/battery/voltage_now``  
+      Default: ``/sys/class/power_supply/battery/voltage_now``  
     * ``-battery_volt_divider <NUM>`` : Divider to get actual voltage (1000 for millivolts as input).  
     * ``-lowbat_pos <tl/tr/bl/br>`` : Low battery icon position : Top Left,Right, Bottom Left,Right.  
     * ``-lowbat_width <1-100>`` : Low battery icon width in percent (relative to screen width).  
     * ``-lowbat_limit <0-90>`` : Threshold to trigger low battery icon in percent (require valid ``-battery_rsoc`` argument path).  
     * ``-lowbat_blink <0.1-10>`` : Low battery icon visible/hide interval in seconds.  
+    * ``-lowbat_test`` : Test mode, Low battery icon will be displayed until program closes (for test purpose).  
     <br>
 
   - OSD display :  
@@ -97,6 +98,9 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-layer`` : Dispmanx layer (10000 by default to ensure it goes over everything else).  
     * ``-timeout <1-20>`` : Hide OSD after given duration.  
     * ``-check <1-120>`` : Signal/GPIO check interval in hz.  
+    * ``-signal_file <PATH>`` (\*\*\*) : Path to signal file, useful if you can't send signal to program.  
+      Should only contain '0', SIGUSR1 or SIGUSR2 value.  
+    * ``-osd_test`` : Test mode, full OSD will be displayed until program closes (for test purpose).  
     <br>
 
   - OSD styling :  
@@ -104,7 +108,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-text_color <RGB,RGBA>`` : Text color.  
     * ``-warn_color <RGB,RGBA>`` : Warning text color.  
     * ``-crit_color <RGB,RGBA>`` : Critical text color.  
-    <RGB,RGBA> uses html format (without # character), allow both 1 or 2 hex per color channel (including alpha channel).  
+      <RGB,RGBA> uses html format (without # character), allow both 1 or 2 hex per color channel (including alpha channel).  
     * ``-max_lines <1-999>`` : Absolute limit lines count on screen (15 by default).  
     * ``-text_padding <0-100>`` : Text distance (px) to screen border in pixels.  
     <br>
@@ -112,12 +116,13 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
   - Header/Footer tiny OSD : 
     * ``-header_position <t/b>`` : Tiny OSD position : Top, Bottom.  
     * ``-header_height <1-100>`` : Tiny OSD height in percent (relative to screen height).  
+    * ``-osd_header_test`` : Test mode, Tiny OSD will be displayed until program closes (for test purpose).  
     <br>
 
   - OSD data :  
     * ``-rtc <PATH>`` (\*\*) : Path used to check if RTC module installed.  
     * ``-cpu_thermal <PATH>`` (\*\*)(\*\*\*) : Path to file containing current CPU temperature.  
-    Default: ``/sys/class/thermal/thermal_zone0/temp``  
+      Default: ``/sys/class/thermal/thermal_zone0/temp``  
     * ``-backlight <PATH>`` (\*\*)(\*\*\*) : File containing backlight current value.  
     * ``-backlight_max <PATH>`` (\*\*)(\*\*\*) : File containing backlight maximum value.  
 <br>
@@ -125,6 +130,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 ### OSD informations:
 Notes: May change without notice, Displayed elements depends on current hardware setup.  
 Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for Tiny OSD.  
+If you can't directly send a signal to the program, a file can be used as alternative solution with argument ``-signal_file <PATH>``.  
+  
 (F/H) : Full OSD and Tiny OSD.  
 
 - Time (F/H) :  
@@ -151,7 +158,7 @@ Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for Tiny OSD
 
 - Network :  
   Interfaces list with assigned IPv4 address.  
-  Not yet implemented but could in the future: WiFi signal values (F/H).  
+  Wifi RX bitrate and signal strength (Require ``iw`` program) (F/H).  
 <br>
 
 ## Repository files
@@ -165,7 +172,6 @@ Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for Tiny OSD
 ## Missing features
 Section to be considered as a pseudo todo.  
 - Allow additionnal way to trigger OSD display, file or whatever.  
-- WiFi informations.
 <br><br>
 
 ## Known issue(s)
