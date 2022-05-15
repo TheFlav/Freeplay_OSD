@@ -516,18 +516,11 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
             //system: gpu memory
             static int32_t gpu_memory_total = 0;
             int32_t gpu_memory_free = -1, gpu_memory_used = -1;
-            if (access("/usr/bin/vcgencmd", F_OK) == 0){
+            {
                 static char* gpu_mem_cmd[4] = {"malloc_total", "reloc_total", "malloc", "reloc"}; int32_t memory[4] = {0};
                 for (int i=0; i<4; i++){
-                    if (gpu_mem_cmd[i] != NULL){
-                        sprintf(buffer, "vcgencmd get_mem %s", gpu_mem_cmd[i]);
-                        filehandle = popen(buffer, "r");
-                        if(filehandle != NULL){
-                            while(fgets(buffer, 255, filehandle) != NULL){
-                                if (strstr(buffer, gpu_mem_cmd[i]) != NULL){sscanf(buffer, "%*[^0123456789]%d", &memory[i]); break;}
-                            }
-                            pclose(filehandle);
-                        }
+                    if (gpu_mem_cmd[i] != NULL && vc_gencmd(buffer, 255, "get_mem %s", gpu_mem_cmd[i]) == 0){
+                        if (strstr(buffer, gpu_mem_cmd[i]) != NULL){sscanf(buffer, "%*[^0123456789]%d", &memory[i]);}
                     }
                 }
 
