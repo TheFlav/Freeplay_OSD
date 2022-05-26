@@ -49,38 +49,89 @@ static void raspidmx_setPixelRGBA32(void* buffer, int buffer_width, int32_t x, i
     uint32_t *line = (uint32_t *)(buffer) + (y * buffer_width) + x; *line = color;
 }
 
-static int32_t raspidmx_drawCharRGBA32(void* buffer, int buffer_width, int buffer_height, int32_t x, int32_t y, uint8_t c, uint8_t* font_ptr, uint32_t color, uint32_t* bg_color){ //modified version from Raspidmx, return end position of printed char
+static int32_t raspidmx_drawCharRGBA32(void* buffer, int buffer_width, int buffer_height, int32_t x, int32_t y, uint8_t c, uint8_t* font_ptr, uint32_t color){ //modified version from Raspidmx, return end position of printed char
     if (buffer == NULL){return x;}
-    bool fill_bg = (bg_color != NULL);
     for (int j=0; j < RASPIDMX_FONT_HEIGHT; j++){
         int32_t tmp_y = y + j;
         if (tmp_y < 0 || tmp_y > buffer_height-1){continue;} //overflow
         uint8_t byte = *(font_ptr + c * RASPIDMX_FONT_HEIGHT + j);
-        if (byte != 0 || (byte == 0 && fill_bg)){
+        if (byte != 0){
             for (int i=0; i < RASPIDMX_FONT_WIDTH; ++i){
                 int32_t tmp_x = x + i;
                 if (tmp_x < 0 || tmp_x > buffer_width-1){break;} //overflow
-                if ((byte >> (RASPIDMX_FONT_WIDTH - i - 1)) & 1){raspidmx_setPixelRGBA32(buffer, buffer_width, tmp_x, tmp_y, color);
-                } else if (fill_bg){raspidmx_setPixelRGBA32(buffer, buffer_width, tmp_x, tmp_y, *bg_color);} //fill background
+                if ((byte >> (RASPIDMX_FONT_WIDTH - i - 1)) & 1){raspidmx_setPixelRGBA32(buffer, buffer_width, tmp_x, tmp_y, color);}
             }
         }
     }
     return x + RASPIDMX_FONT_WIDTH;
 }
 
-static int32_t raspidmx_drawStringRGBA32(void* buffer, int buffer_width, int buffer_height, int32_t x, int32_t y, const char* string, uint8_t* font_ptr, uint32_t color, uint32_t* bg_color){ //modified version from Raspidmx, return end position of printed string
-    if (string == NULL || buffer == NULL){return x;}
-    int32_t x_first = x, x_last = x;
-    while (*string != '\0'){
-        if (*string == '\n'){x = x_first; y += RASPIDMX_FONT_HEIGHT;
+static VC_RECT_T raspidmx_drawStringRGBA32(void* buffer, int buffer_width, int buffer_height, int32_t x, int32_t y, const char* str, uint8_t* font_ptr, uint32_t color, uint32_t* outline_color){ //modified version of Raspidmx drawStringRGB() function. Return end position of printed string, text box size
+    if (str == NULL || buffer == NULL){return (VC_RECT_T){.x = x, .y = y};}
+
+    const char* str_back = str;
+    int32_t x_back = x, x_last = x, x_end = x, y_back = y;
+    
+    //detect text box size
+    while (*str != '\0'){
+        if (*str == '\n'){x = x_back; y += RASPIDMX_FONT_HEIGHT;
         } else if (x < buffer_width){
-            x = raspidmx_drawCharRGBA32(buffer, buffer_width, buffer_height, x, y, *string, font_ptr, color, bg_color);
-            if (x > x_last){x_last = x;}
+            if (outline_color == NULL){raspidmx_drawCharRGBA32(buffer, buffer_width, buffer_height, x, y, *str, font_ptr, color);} x += RASPIDMX_FONT_WIDTH;
+            if (x > x_last){x_last = x;} x_end = x;
         }
-        ++string;
+        ++str;
     }
-    return x_last;
+    
+    int32_t text_width_return = x_last - x_back, text_height_return = y + RASPIDMX_FONT_HEIGHT - y_back; //box size wo padding
+    if (outline_color != NULL){ //outline mode
+        int32_t text_width = text_width_return + 2, text_height = text_height_return + 2; //box size
+        uint8_t *text_bitmap_ptr = calloc(1, text_width * text_height), *text_out_bitmap_ptr = calloc(1, text_width * text_height);
+        if (text_bitmap_ptr == NULL || text_out_bitmap_ptr == NULL){ //failed to allocate
+            if (text_bitmap_ptr != NULL){free(text_bitmap_ptr);}
+            if (text_out_bitmap_ptr != NULL){free(text_out_bitmap_ptr);}
+        } else {
+            int32_t text_x = 1, text_y = 1;
+            str = str_back;
+            while (*str != '\0'){ //build text and outline bitmap
+                if (*str == '\n'){text_x = 1; text_y += RASPIDMX_FONT_HEIGHT;
+                } else if (text_x < text_width-1){
+                    for (int char_y = 0; char_y < RASPIDMX_FONT_HEIGHT; char_y++){ //char bitmap
+                        uint8_t byte = *(font_ptr + *str * RASPIDMX_FONT_HEIGHT + char_y);
+                        if (byte != 0){
+                            int32_t tmp_y = text_y + char_y;
+                            for (int char_x = 0; char_x < RASPIDMX_FONT_WIDTH; char_x++){
+                                int32_t tmp_x = text_x + char_x;
+                                if ((byte >> (RASPIDMX_FONT_WIDTH - char_x - 1)) & 1){
+                                    for (int8_t j_out=-1; j_out<2; j_out++){for (int8_t i_out=-1; i_out<2; i_out++){*(text_out_bitmap_ptr + ((tmp_y + j_out) * text_width) + (tmp_x + i_out)) = 1;}} //outline
+                                    *(text_bitmap_ptr + (tmp_y * text_width) + tmp_x) = 1;
+                                }
+                            }
+                        }
+                    }
+                    text_x += RASPIDMX_FONT_WIDTH;
+                }
+                ++str;
+            }
+
+            for (int buffer_y = y_back, tmp_y = 0; buffer_y < y_back + text_height; buffer_y++, tmp_y++){ //text bitmap to buffer
+                if (buffer_y < 0){continue;} else if (buffer_y > buffer_height - 1){break;} //overflow
+                for (int buffer_x = x_back, tmp_x = 0; buffer_x < x_back + text_width; buffer_x++, tmp_x++){
+                    if (buffer_x < 0){continue;} else if (buffer_x > buffer_width-1){break;} //overflow
+                    uint32_t bitmap_offset = (tmp_y * text_width) + tmp_x;
+                    uint32_t *pixel = (uint32_t *)(buffer) + ((buffer_y * buffer_width) + buffer_x);
+                    if (*(text_bitmap_ptr + bitmap_offset) == 1){*pixel = color; //text
+                    } else if (*(text_out_bitmap_ptr + bitmap_offset) == 1){*pixel = *outline_color;} //outline
+                }
+            }
+
+            free(text_bitmap_ptr); free(text_out_bitmap_ptr); 
+        }
+    }
+
+    str = str_back; //store string pointer
+    return (VC_RECT_T){.x = x_end, .y = y, .width = text_width_return, .height = text_height_return};
 }
+
 
 //dispmanx specific
 static void buffer_fill(void* buffer, uint32_t width, uint32_t height, uint32_t rgba_color){ //fill buffer with given color
@@ -288,7 +339,7 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
             text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
             raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, osd_color_text, NULL);
             text_column_right -= RASPIDMX_FONT_WIDTH;
-            raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
+            raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
 
             //battery: left side
             int32_t batt_rsoc = -1; double batt_voltage = -1.;
@@ -304,9 +355,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                 } else if (batt_voltage < 0.){sprintf(buffer, "%3d%%", batt_rsoc); //invalid voltage, rsoc only
                 } else {sprintf(buffer, "%3d%% %.2lfv", batt_rsoc, batt_voltage);} //both
 
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 7, osd_icon_font_ptr, tmp_color, NULL) + 2; //battery icon
-                text_column_left = raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL);
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
+                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 7, osd_icon_font_ptr, tmp_color/*, NULL*/) + 2; //battery icon
+                text_column_left = raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL).x;
+                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
             }
 
             //cpu: left side
@@ -316,13 +367,13 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
             if (cpu_temp > -1 || cpu_load > -1){
                 uint32_t tmp_color = osd_color_text;
                 if (cpu_temp > -1){
-                    if (cpu_temp > 85){tmp_color = osd_color_crit;} else if (cpu_temp > 75){tmp_color = osd_color_warn;}
+                    if (cpu_temp >= 85){tmp_color = osd_color_crit;} else if (cpu_temp >= 75){tmp_color = osd_color_warn;}
                     sprintf(buffer, "%dC %3d%%", cpu_temp, cpu_load);
                 } else {sprintf(buffer, "%3d%%", cpu_load);}
 
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 2, osd_icon_font_ptr, tmp_color, NULL) + 2; //cpu icon
-                text_column_left = raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL);
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
+                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 2, osd_icon_font_ptr, tmp_color/*, NULL*/) + 2; //cpu icon
+                text_column_left = raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL).x;
+                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
             }
 
             //backlight: right side
@@ -336,9 +387,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                 text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
                 raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, osd_color_text, NULL);
                 text_column_right -= RASPIDMX_FONT_WIDTH + 2;
-                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 8, osd_icon_font_ptr, osd_color_text, NULL); //backlight icon
+                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 8, osd_icon_font_ptr, osd_color_text/*, NULL*/); //backlight icon
                 text_column_right -= RASPIDMX_FONT_WIDTH;
-                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
+                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
             }
 
             //wifi:right side
@@ -382,9 +433,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                     }
 
                     text_column_right -= RASPIDMX_FONT_WIDTH + 2;
-                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 4, osd_icon_font_ptr, tmp_color, NULL); //wifi icon
+                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 4, osd_icon_font_ptr, tmp_color/*, NULL*/); //wifi icon
                     text_column_right -= RASPIDMX_FONT_WIDTH;
-                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator, NULL); //separator
+                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
                 }
             }
 
@@ -544,7 +595,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
                 if (cpu_temp > -1 || cpu_load > -1){
                     uint32_t tmp_color = osd_color_text;
                     if (cpu_temp > -1){
-                        if (cpu_temp > 85){tmp_color = osd_color_crit;} else if (cpu_temp > 75){tmp_color = osd_color_warn;}
+                        if (cpu_temp >= 85){tmp_color = osd_color_crit;} else if (cpu_temp >= 75){tmp_color = osd_color_warn;}
                         sprintf(buffer, "CPU: %dC (%d%% load)", cpu_temp, cpu_load);
                     } else {sprintf(buffer, "CPU: %d%%", cpu_load);}
                     raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, buffer, raspidmx_font_ptr, tmp_color, &osd_color_text_bg);
@@ -556,7 +607,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
                     int32_t memory_load = memory_used * 100 / memory_total;
                     if (memory_load < 0){memory_load = 0;} else if (memory_load > 100){memory_load = 100;}
                     uint32_t tmp_color = (memory_load>95)?osd_color_warn:osd_color_text;
-                    sprintf(buffer, "RAM: %d/%dM (%d%% used)\n", memory_used, memory_total, memory_load);
+                    sprintf(buffer, "RAM: %d/%dM (%d%% used)", memory_used, memory_total, memory_load);
                     raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, buffer, raspidmx_font_ptr, tmp_color, &osd_color_text_bg);
                     text_y += RASPIDMX_FONT_HEIGHT;
                 }
@@ -565,7 +616,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
                 if (gpu_memory_total > 0){
                     int32_t gpu_memory_load = gpu_memory_used * 100 / gpu_memory_total;
                     uint32_t tmp_color = (gpu_memory_load>95)?osd_color_warn:osd_color_text;
-                    sprintf(buffer, "GPU: %d/%dM (%d%% used)\n", gpu_memory_used, gpu_memory_total, gpu_memory_load);
+                    sprintf(buffer, "GPU: %d/%dM (%d%% used)", gpu_memory_used, gpu_memory_total, gpu_memory_load);
                     raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, buffer, raspidmx_font_ptr, tmp_color, &osd_color_text_bg);
                     text_y += RASPIDMX_FONT_HEIGHT;
                 }
@@ -647,6 +698,8 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
                 }
                 text_y += osd_text_padding; text_column = osd_text_padding;
             }
+
+            //raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\n", raspidmx_font_ptr, osd_color_text, &osd_color_text_bg);
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_buffer_ptr, &osd_rect) != 0){

@@ -42,8 +42,8 @@ Please refer to fp_osd.c for more informations.
 static double get_time_double(void); //get time in double (seconds), takes around 82 microseconds to run
 
 static void raspidmx_setPixelRGBA32(void* /*buffer*/, int /*buffer_width*/, int32_t /*x*/, int32_t /*y*/, uint32_t /*color*/); //modified version from Raspidmx
-static int32_t raspidmx_drawCharRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, uint8_t /*c*/, uint8_t* /*font_ptr*/, uint32_t /*color*/, uint32_t* /*bg_color*/); //modified version from Raspidmx, return end position of printed char
-static int32_t raspidmx_drawStringRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, const char* /*string*/, uint8_t* /*font_ptr*/, uint32_t /*color*/, uint32_t* /*bg_color*/); //modified version from Raspidmx, return end position of printed string
+static int32_t raspidmx_drawCharRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, uint8_t /*c*/, uint8_t* /*font_ptr*/, uint32_t /*color*/); //modified version from Raspidmx, return end position of printed char
+static VC_RECT_T raspidmx_drawStringRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, const char* /*string*/, uint8_t* /*font_ptr*/, uint32_t /*color*/, uint32_t* /*outline_color*/); //modified version of Raspidmx drawStringRGB() function. Return end position of printed string, text box size
 
 static void buffer_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, uint32_t /*rgba_color*/); //fill buffer with given color
 static void buffer_rectangle_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/, int32_t /*w*/, int32_t /*h*/, uint32_t /*rgba_color*/); //fill rectangle with given color
@@ -81,7 +81,7 @@ int osd_layer = 10000; //dispmanx layer, full osd:+1, low battery:+2, tiny osd:+
 int osd_check_rate = 30; //osd check rate in hz
 //int osd_signal = SIGUSR1; //trigger signal
 int osd_timeout = 5; //timeout in sec
-int osd_max_lines = 15; //max number of lines to display on screen without spacing
+int osd_max_lines = 16; //max number of lines to display on screen without spacing
 int osd_text_padding = 5; //text distance to screen border
 bool osd_test = false; //force display of full OSD, for test purpose
 double osd_start_time = -1.; //osd start time
@@ -89,11 +89,11 @@ void *osd_buffer_ptr = NULL; //bitmap buffer pointer
 char osd_color_bg_str[9] = "00000050"; uint32_t osd_color_bg = 0, osd_color_text_bg = 0; //background raw color (rgba)
 char osd_color_text_str[9] = "FFFFFF"; uint32_t osd_color_text = 0, osd_color_separator = 0; //text raw color (rgba)
 char osd_color_warn_str[9] = "ffa038"/*"FF7F27"*/; uint32_t osd_color_warn = 0; //warning text raw color (rgba)
-char osd_color_crit_str[9] = "f54638"/*"EB3324"*/; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
+char osd_color_crit_str[9] = "ff5548"/*"EB3324"*/; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
 
 //header osd
 bool osd_header_test = false; //force display of header OSD, for test purpose
-int osd_header_height_percent = 6; //height percent relative to screen height
+int osd_header_height_percent = 5; //height percent relative to screen height
 double osd_header_start_time = -1.; //osd start time
 char osd_header_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
 void *osd_header_buffer_ptr = NULL; //bitmap buffer pointer
