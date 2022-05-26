@@ -48,6 +48,7 @@ static VC_RECT_T raspidmx_drawStringRGBA32(void* /*buffer*/, int /*buffer_width*
 static void buffer_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, uint32_t /*rgba_color*/); //fill buffer with given color
 static void buffer_rectangle_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/, int32_t /*w*/, int32_t /*h*/, uint32_t /*rgba_color*/); //fill rectangle with given color
 static void buffer_horizontal_line(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x1*/, int32_t /*x2*/, int32_t /*y*/, uint32_t /*rgba_color*/); //draw horizontal line
+static uint32_t buffer_getRGBAcolor(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/); //get specific color from buffer
 
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* /*filename*/, VC_RECT_T* /*image_rect_ptr*/); //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
 
@@ -119,8 +120,10 @@ bool lowbat_gpio_enabled = false; //use gpio pin, leave as is, defined during ru
 DISPMANX_RESOURCE_HANDLE_T lowbat_resource = 0;
 char* lowbat_img_file = "res/low_battery.png"; //low battery icon filename
 char lowbat_pos_str[3] = "tr"; //raw image position, tl,tr,bl,br. Real position computed at runtime
-int lowbat_width_percent = 8; //low battery icon width percent relative to screen width
+int lowbat_width_percent = 13; //low battery icon width percent relative to screen width
 #define lowbat_padding 10 //icon distance to display borders
+void *lowbat_buffer_ptr = NULL; //bitmap buffer pointer
+uint32_t lowbat_icon_bar_color = 0xFF000000, lowbat_icon_bar_bg_color = 0xFF000000;
 
 int lowbat_limit = 10; //low battery icon display threshold (percent)
 double lowbat_blink = .5; //low battery icon blink interval in sec

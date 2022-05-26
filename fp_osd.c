@@ -156,7 +156,14 @@ static void buffer_horizontal_line(void* buffer, uint32_t width, uint32_t height
     for (int32_t lx = (x1<0)?0:x1; lx <= ((x2>width-1)?width-1:x2); lx++){*(ptr + ptr_y_shift + (uint32_t)lx) = rgba_color;}
 }
 
-static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filename, VC_RECT_T* image_rect_ptr){ //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
+static uint32_t buffer_getRGBAcolor(void* buffer, uint32_t width, uint32_t height, int32_t x, int32_t y){ //get specific color from buffer
+    uint32_t color = 0xFF000000;
+    if (buffer == NULL || x < 0 || y < 0 || x > width-1 || y > height-1){return color;}
+    color = *((uint32_t *)(buffer) + (y * width) + x);
+    return color;
+}
+
+static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filename, VC_RECT_T* image_rect_ptr/*, void** ext_buffer, bool fill_buffer*/){ //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
 	FILE* filehandle = fopen(filename, "rb");
 	if (filehandle == NULL){print_stderr("failed to read '%s'.\n", filename); return 0;} else {print_stderr("'%s' opened.\n", filename);}
 
@@ -186,7 +193,9 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     }
     if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)){png_set_tRNS_to_alpha(png_ptr);} //convert tRNS chunks to alpha channels
     if (bit_depth == 16){png_set_scale_16(png_ptr);} //scale down 16bits to 8bits depth
+    if (!(color_type & PNG_COLOR_MASK_ALPHA)){png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER); print_stderr("dummy alpha channel added.\n");} //no alpha channel, add one
 	png_read_update_info(png_ptr, info_ptr); //update png info structure
+    color_type = png_get_color_type(png_ptr, info_ptr);
 
     //read image into memory
     int pitch = ALIGN_TO_16(width) * ((color_type & PNG_COLOR_MASK_ALPHA)?4:3);
@@ -215,7 +224,6 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     print_stderr("dispmanx resource created, handle:%u.\n", resource);
     return resource;
 }
-
 
 //low battery related
 static bool lowbat_gpio_init(void){ //init low battery gpio things
@@ -348,7 +356,7 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
             //batt_rsoc = 100; batt_voltage = 4.195;
             if (batt_rsoc > -1 || batt_voltage > 0){
                 uint32_t tmp_color = osd_color_text;
-                if (batt_rsoc > 0){if (batt_rsoc < 10){tmp_color = osd_color_crit;} else if (batt_rsoc < 25){tmp_color = osd_color_warn;}
+                if (batt_rsoc > 0){if (batt_rsoc <= lowbat_limit){tmp_color = osd_color_crit;} else if (batt_rsoc <= 25){tmp_color = osd_color_warn;}
                 } else if (batt_voltage > 0.){if (batt_voltage < 3.4){tmp_color = osd_color_crit;} else if (batt_voltage < 3.55){tmp_color = osd_color_warn;}}
                 
                 if (batt_rsoc < 0){sprintf(buffer, "%.3lfv", batt_voltage); //invalid rsoc, voltage only
@@ -528,7 +536,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
                 strcpy(buffer, "Battery: "); char buffer0[16] = {'\0'};
 
                 uint32_t tmp_color = osd_color_text;
-                if (batt_rsoc > 0){if (batt_rsoc < 10){tmp_color = osd_color_crit;} else if (batt_rsoc < 25){tmp_color = osd_color_warn;}
+                if (batt_rsoc > 0){if (batt_rsoc <= lowbat_limit){tmp_color = osd_color_crit;} else if (batt_rsoc <= 25){tmp_color = osd_color_warn;}
                 } else if (batt_voltage > 0.){if (batt_voltage < 3.4){tmp_color = osd_color_crit;} else if (batt_voltage < 3.55){tmp_color = osd_color_warn;}}
 
                 if (batt_rsoc < 0){sprintf(buffer0, "%.3lfv", batt_voltage); //invalid rsoc, voltage only
@@ -716,6 +724,42 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
     } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
 
+void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
+    if (lowbat_buffer_ptr != NULL){ //valid bitmap buffer
+        uint32_t icon_width_16 = ALIGN_TO_16(icon_width), icon_height_16 = ALIGN_TO_16(icon_height);
+
+        static int32_t batt_rsoc_last = INT32_MIN; int32_t batt_rsoc = -1;
+        FILE *filehandle = fopen(battery_rsoc_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &batt_rsoc); fclose(filehandle);} //rsoc
+        if (batt_rsoc < 0){batt_rsoc = 0;} else if (batt_rsoc > 100){batt_rsoc = 100;}
+
+        if (batt_rsoc != batt_rsoc_last){ //redraw
+            uint32_t tmp_color = lowbat_icon_bar_color, tmp_color_bar = lowbat_icon_bar_color;
+            if (batt_rsoc <= lowbat_limit){tmp_color = osd_color_crit; tmp_color_bar = osd_color_crit;
+            } else if (batt_rsoc <= 25){tmp_color = osd_color_warn; tmp_color_bar = osd_color_warn;}
+
+            buffer_rectangle_fill(lowbat_buffer_ptr, icon_width_16, icon_height_16, 5, 5, 39, 17, lowbat_icon_bar_bg_color); //reset bars background
+            buffer_rectangle_fill(lowbat_buffer_ptr, icon_width_16, icon_height_16, 5, 5, 39*batt_rsoc/100, 17, tmp_color_bar); //bars
+
+            char buffer[16]; sprintf(buffer, "%3d%%", batt_rsoc);
+            raspidmx_drawStringRGBA32(lowbat_buffer_ptr, icon_width_16, icon_height_16, 9, 6, buffer, raspidmx_font_ptr, tmp_color, &lowbat_icon_bar_bg_color/*&osd_color_text_bg*/);
+
+            batt_rsoc_last = batt_rsoc;
+
+            VC_RECT_T icon_rect; vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width, icon_height);
+            if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, icon_width_16 * 4, lowbat_buffer_ptr, &icon_rect) != 0){
+                print_stderr("failed to write dispmanx resource.\n");
+            } else {
+                vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width << 16, icon_height << 16);
+                VC_RECT_T icon_rect_dest; vc_dispmanx_rect_set(&icon_rect_dest, x, y, width, height);
+                if (*element == 0){
+                    *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer + 2, &icon_rect_dest, resource, &icon_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+                    if (*element == 0){print_stderr("failed to add element.\n");}
+                } else {vc_dispmanx_element_modified(update, *element, &icon_rect_dest);}
+            }
+        }
+    } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
+}
+
 
 //integer manipulation functs
 int int_constrain(int* val, int min, int max){ //limit int value to given (incl) min and max value, return 0 if val within min and max, -1 under min, 1 over max
@@ -761,8 +805,9 @@ static void tty_signal_handler(int sig){ //handle signal func
 static void program_close(void){ //regroup all close functs
     if (already_killed){return;}
     if (strlen(pid_path) > 0){remove(pid_path);} //delete pid file
-    if (osd_buffer_ptr != NULL){free(osd_buffer_ptr);} //free osd buffer
-    if (osd_header_buffer_ptr != NULL){free(osd_header_buffer_ptr);} //free osd header buffer
+    if (osd_buffer_ptr != NULL){free(osd_buffer_ptr); osd_buffer_ptr = NULL;} //free osd buffer
+    if (osd_header_buffer_ptr != NULL){free(osd_header_buffer_ptr); osd_header_buffer_ptr = NULL;} //free osd header buffer
+    if (lowbat_buffer_ptr != NULL){free(lowbat_buffer_ptr); lowbat_buffer_ptr = NULL;} //free low batt buffer
     if (dispmanx_display != 0){vc_dispmanx_display_close(dispmanx_display); print_stderr("dispmanx freed.\n");}
     bcm_host_deinit(); //deinit bcm host when program closes
     already_killed = true;
@@ -987,12 +1032,25 @@ int main(int argc, char *argv[]){
 
     //low battery icon
     VC_RECT_T lowbat_rect = {0};
+    int32_t lowbat_width = 1, lowbat_height = 1;
     lowbat_resource = dispmanx_resource_create_from_png(lowbat_img_file, &lowbat_rect);
     bool lowbat_displayed = false; //low battery ressource not failed
 
     DISPMANX_ELEMENT_HANDLE_T lowbat_element = 0;
     VC_RECT_T lowbat_rect_dest = {0};
     if (lowbat_resource > 0){
+        lowbat_width = lowbat_rect.width; lowbat_height = lowbat_rect.height;
+
+        //initial buffer
+        lowbat_buffer_ptr = calloc(1, ALIGN_TO_16(lowbat_width) * ALIGN_TO_16(lowbat_height) * 4);
+        if (lowbat_buffer_ptr == NULL){print_stderr("failed to allocate low battery initial bitmap buffer.\n");
+        } else {
+            vc_dispmanx_resource_read_data(lowbat_resource, &lowbat_rect, lowbat_buffer_ptr, ALIGN_TO_16(lowbat_width) * 4);
+            lowbat_icon_bar_color = buffer_getRGBAcolor(lowbat_buffer_ptr, ALIGN_TO_16(lowbat_width), ALIGN_TO_16(lowbat_height), 9, 13);
+            lowbat_icon_bar_bg_color = buffer_getRGBAcolor(lowbat_buffer_ptr, ALIGN_TO_16(lowbat_width), ALIGN_TO_16(lowbat_height), 40, 13);
+            print_stderr("valid low battery initial bitmap buffer.\n");
+        }
+
         //resize
         double ratio = (double)lowbat_rect.height / lowbat_rect.width;
         lowbat_rect_dest.width = (double)display_width * ((double)lowbat_width_percent / 100.);
@@ -1025,7 +1083,7 @@ int main(int argc, char *argv[]){
 
     DISPMANX_ELEMENT_HANDLE_T osd_header_element = 0;
     DISPMANX_RESOURCE_HANDLE_T osd_header_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_header_width, osd_header_height, &vc_image_ptr);
-    if (lowbat_resource > 0){
+    if (osd_header_resource > 0){
         if (osd_header_pos_str[0]=='b'){osd_header_y = display_height - osd_header_height_dest;} //footer
     }
 
@@ -1081,11 +1139,19 @@ int main(int argc, char *argv[]){
         //low battery icon
         //lowbat_test = true; //debug
         if (lowbat_resource > 0){ //low battery icon, disabled when header osd displayed
-            if (loop_start_time - lowbat_blink_start_time > lowbat_blink){
+            bool lowbat_trigger = lowbat_test || lowbat_gpio_check() || lowbat_sysfs();
+            if (access(battery_rsoc_path, F_OK) == 0 && lowbat_buffer_ptr != NULL){ //build low battery icon on-the-fly
+                if (lowbat_trigger){
+                    if (loop_start_time - lowbat_blink_start_time > 1.){ //update every seconds
+                        lowbatt_build_element(lowbat_resource, &lowbat_element, dispmanx_update, lowbat_width, lowbat_height, lowbat_rect_dest.x, lowbat_rect_dest.y, lowbat_rect_dest.width, lowbat_rect_dest.height);
+                        lowbat_blink_start_time = loop_start_time;
+                    }
+                } else if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
+            } else if (loop_start_time - lowbat_blink_start_time > lowbat_blink){ //static low battery icon
                 if (lowbat_displayed || osd_header_start_time > 0){ //remove low battery icon
                     if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
                     lowbat_displayed = false;
-                } else if (!lowbat_displayed && (lowbat_test || lowbat_gpio_check() || lowbat_sysfs())){ //add low battery icon
+                } else if (!lowbat_displayed && lowbat_trigger){ //add low battery icon
                     if (lowbat_element == 0){lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer + 2, &lowbat_rect_dest, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);}
                     lowbat_displayed = true;
                 }

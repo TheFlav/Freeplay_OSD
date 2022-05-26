@@ -24,7 +24,7 @@ Credits goes where its due:
   <img src="git_image/osd_tiny_01.png" width="320" title="Tiny OSD"/> 
   
 - Low battery :  
-  <img src="git_image/lowbatt_no_osd.png" width="320" title="Low battery no OSD"/> 
+  <img src="git_image/lowbatt_no_osd.png" width="320" title="Low battery no OSD"/> <img src="git_image/lowbatt_no_osd_rsoc.png" width="320" title="Low battery no OSD with RSOC"/> 
 <br>
   
 ## Compilation:
@@ -128,7 +128,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 <br>
 
 ### OSD informations:
-Notes: May change without notice, Displayed elements depends on current hardware setup.  
+**Notes:** May change without notice, Displayed elements depends on current hardware setup.  
 Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for Tiny OSD.  
 If you can't directly send a signal to the program, a file can be used as alternative solution with argument ``-signal_file <PATH>``.  
   
@@ -161,6 +161,31 @@ If you can't directly send a signal to the program, a file can be used as altern
   Wifi RX bitrate and signal strength (Require ``iw`` program) (F/H).  
 <br>
 
+### Low battery icon (when triggered):
+If no valid battery RSOC file provided (``-battery_rsoc <PATH>``), embeded icon will blink at defined interval (``-lowbat_blink <0.1-10>``).  
+Else, icon will be updated on-the-fly with last detected RSOC value.  
+**Note:** If for whatever reason, RSOC file fails to read (but was before), displayed icon (blinking) will keep last updated information.  
+
+- Icon layout (hardcoded)(X,Y):
+  - Bars:
+    - 25% : 5,5 to 13,22
+    - 50% : 16,5 to 22,22
+    - 75% : 26,5 to 33,22
+    - 100% : 36,5 to 44,22  
+  - RSOC:
+    - Digit 1 : 9,6 to 16,21
+    - Digit 2 : 17,6 to 24,21
+    - Digit 3 : 25,6 to 32,21
+    - Percent character : 33,6 to 40,21  
+<br>
+
+- Bars colors (update on-the-fly):
+  - Background color is picked on file 100% bar color.
+  - Normal color is picked on file 25% bar color.
+  - Warning color is based on ``-warn_color <RGB,RGBA>`` argument.
+  - Critical color is based on ``-crit_color <RGB,RGBA>`` argument.
+<br><br>
+  
 ## Repository files
 - **res/** : Contain resources linked to the program like icons and other.
 - **font.h** : Bitmap font from Raspidmx project.
@@ -171,7 +196,7 @@ If you can't directly send a signal to the program, a file can be used as altern
   
 ## Missing features
 Section to be considered as a pseudo todo.  
-- Allow additionnal way to trigger OSD display, file or whatever.  
+- Full rework.
 <br><br>
 
 ## Known issue(s)
