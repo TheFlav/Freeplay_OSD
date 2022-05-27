@@ -37,7 +37,6 @@ Please refer to fp_osd.c for more informations.
     char gpiod_consumer_name[128];
 #endif
 
-
 //prototypes
 static double get_time_double(void); //get time in double (seconds), takes around 82 microseconds to run
 
@@ -110,12 +109,14 @@ char backlight_max_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight_max"; 
 //osd: low battery
 bool lowbat_test = false; //force display of low battery icon, for test purpose
 bool lowbat_gpio_enabled = false; //use gpio pin, leave as is, defined during runtime
-#if defined(USE_WIRINGPI) || defined(USE_GPIOD) //low bat gpio
-    bool lowbat_gpio_reversed = false; //gpio pin active low
+bool gpio_ext = false; //use external program to read gpio state
+
+//#if defined(USE_WIRINGPI) || defined(USE_GPIOD)  //low bat gpio
+    bool lowbat_gpio_reversed = true; //gpio pin active low
     int lowbat_gpio = 10; //gpio pin, -1 to disable
-#else
-    int lowbat_gpio = -1; //disabled
-#endif
+//#else
+//    int lowbat_gpio = -1; //disabled
+//#endif
 
 DISPMANX_RESOURCE_HANDLE_T lowbat_resource = 0;
 char* lowbat_img_file = "res/low_battery.png"; //low battery icon filename
@@ -128,6 +129,7 @@ uint32_t lowbat_icon_bar_color = 0xFF000000, lowbat_icon_bar_bg_color = 0xFF0000
 int lowbat_limit = 10; //low battery icon display threshold (percent)
 double lowbat_blink = .5; //low battery icon blink interval in sec
 double lowbat_blink_start_time = -1.; //low battery icon blink start time
+double lowbat_check_start_time = -1.; //low battery gpio and rsoc check start time
 
 char battery_rsoc_path[PATH_MAX] = "/sys/class/power_supply/battery/capacity"; //absolute path to battery rsoc
 char battery_volt_path[PATH_MAX] = "/sys/class/power_supply/battery/voltage_now"; //absolute path to battery voltage

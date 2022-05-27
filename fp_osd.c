@@ -25,7 +25,6 @@ Credits goes where its due:
 
 #include "fp_osd.h"
 
-
 //time functions
 static double get_time_double(void){ //get time in double (seconds), takes around 82 microseconds to run
     struct timespec tp; int result = clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -83,7 +82,7 @@ static VC_RECT_T raspidmx_drawStringRGBA32(void* buffer, int buffer_width, int b
     }
     
     int32_t text_width_return = x_last - x_back, text_height_return = y + RASPIDMX_FONT_HEIGHT - y_back; //box size wo padding
-    if (outline_color != NULL){ //outline mode
+    if (outline_color != NULL){ //outline mode, todo: optimize
         int32_t text_width = text_width_return + 2, text_height = text_height_return + 2; //box size
         uint8_t *text_bitmap_ptr = calloc(1, text_width * text_height), *text_out_bitmap_ptr = calloc(1, text_width * text_height);
         if (text_bitmap_ptr == NULL || text_out_bitmap_ptr == NULL){ //failed to allocate
@@ -163,7 +162,7 @@ static uint32_t buffer_getRGBAcolor(void* buffer, uint32_t width, uint32_t heigh
     return color;
 }
 
-static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filename, VC_RECT_T* image_rect_ptr/*, void** ext_buffer, bool fill_buffer*/){ //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
+static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filename, VC_RECT_T* image_rect_ptr){ //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
 	FILE* filehandle = fopen(filename, "rb");
 	if (filehandle == NULL){print_stderr("failed to read '%s'.\n", filename); return 0;} else {print_stderr("'%s' opened.\n", filename);}
 
@@ -185,7 +184,7 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
 
 	double gamma = .0; if (png_get_gAMA(png_ptr, info_ptr, &gamma)){png_set_gamma(png_ptr, 2.2, gamma);} //gamma correction, useful?
 
-    //convert to rgb/rgba
+    //convert to rgba
     if (color_type == PNG_COLOR_TYPE_PALETTE){png_set_palette_to_rgb(png_ptr); //convert palette to rgb
     } else if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA){ //grayscale
         if (bit_depth < 8){png_set_expand_gray_1_2_4_to_8(png_ptr);} //extend to 8bits depth
@@ -256,21 +255,43 @@ static bool lowbat_gpio_init(void){ //init low battery gpio things
             }
         }
     #endif
+    
+    if (access("/usr/bin/raspi-gpio", F_OK) == 0){
+        print_stderr("falling back to '/usr/bin/raspi-gpio' program.\n");
+        gpio_ext = true; //use external program to read gpio state
+        return true;
+    }
+    
     return false; //disabled
 }
 
 static bool lowbat_gpio_check(void){ //check if low battery gpio is high, false if not (incl. disabled)
     if (!lowbat_gpio_enabled || lowbat_gpio < 0){return false;}
     bool ret = false;
+    if (!gpio_ext){
     #ifdef USE_WIRINGPI //wiringPi library
         ret = digitalRead(lowbat_gpio) > 0;
         if (lowbat_gpio_reversed){ret = !ret;} //reverse input
     #elif defined(USE_GPIOD) //gpiod library
-        if (gpiod_fd >= 0){
+        if (gpiod_fd >= 0 && gpiod_line_is_free(gpiod_input_line)){
             int gpiod_ret = gpiod_line_get_value(gpiod_input_line);
             if (gpiod_ret >= 0){if (lowbat_gpio_reversed){ret = !gpiod_ret;} else {ret = gpiod_ret;}} //reverse/normal input
         }
     #endif
+    } else {
+        int tmp_gpio = -1, tmp_level = -1;
+        char buffer[32]; sprintf(buffer, "raspi-gpio get %d", lowbat_gpio);
+        FILE *filehandle = popen(buffer, "r");
+        if(filehandle != NULL){
+            fscanf(filehandle, "%*[^0123456789]%d%*[^0123456789]%d", &tmp_gpio, &tmp_level); //GPIO %d: level=%d fsel=1 func=INPUT
+            pclose(filehandle);
+        }
+        if (tmp_gpio == lowbat_gpio && tmp_level >= 0){
+            //printf("gpio:%d, level:%d\n", tmp_gpio, tmp_level);
+            ret = tmp_level > 0;
+            if (lowbat_gpio_reversed){ret = !ret;} //reverse input
+        }
+    }
     return ret;
 }
 
@@ -725,14 +746,25 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
 }
 
 void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
-    if (lowbat_buffer_ptr != NULL){ //valid bitmap buffer
-        uint32_t icon_width_16 = ALIGN_TO_16(icon_width), icon_height_16 = ALIGN_TO_16(icon_height);
+    uint32_t icon_width_16 = ALIGN_TO_16(icon_width), icon_height_16 = ALIGN_TO_16(icon_height);
 
+    if (lowbat_buffer_ptr == NULL){
+        print_stderr("creating low battery bitmap buffer.\n");
+        lowbat_buffer_ptr = calloc(1, icon_width_16 * icon_height_16 * 4);
+        if (lowbat_buffer_ptr != NULL){
+            VC_RECT_T tmp_rect = {.width=icon_width, .height=icon_height};
+            vc_dispmanx_resource_read_data(lowbat_resource, &tmp_rect, lowbat_buffer_ptr, icon_width_16 * 4);
+            lowbat_icon_bar_color = buffer_getRGBAcolor(lowbat_buffer_ptr, icon_width_16, icon_height_16, 9, 13);
+            lowbat_icon_bar_bg_color = buffer_getRGBAcolor(lowbat_buffer_ptr, icon_width_16, icon_height_16, 40, 13);
+        }
+    }
+    
+    if (lowbat_buffer_ptr != NULL){ //valid bitmap buffer
         static int32_t batt_rsoc_last = INT32_MIN; int32_t batt_rsoc = -1;
         FILE *filehandle = fopen(battery_rsoc_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &batt_rsoc); fclose(filehandle);} //rsoc
         if (batt_rsoc < 0){batt_rsoc = 0;} else if (batt_rsoc > 100){batt_rsoc = 100;}
 
-        if (batt_rsoc != batt_rsoc_last){ //redraw
+        if (batt_rsoc != batt_rsoc_last || *element == 0){ //redraw
             uint32_t tmp_color = lowbat_icon_bar_color, tmp_color_bar = lowbat_icon_bar_color;
             if (batt_rsoc <= lowbat_limit){tmp_color = osd_color_crit; tmp_color_bar = osd_color_crit;
             } else if (batt_rsoc <= 25){tmp_color = osd_color_warn; tmp_color_bar = osd_color_warn;}
@@ -759,6 +791,32 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
         }
     } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 //integer manipulation functs
@@ -909,10 +967,10 @@ int main(int argc, char *argv[]){
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0){program_usage(); return EXIT_SUCCESS;
 
         //Low battery management
-#if defined(USE_WIRINGPI) || defined(USE_GPIOD)
+//#if defined(USE_WIRINGPI) || defined(USE_GPIOD)
         } else if (strcmp(argv[i], "-lowbat_gpio") == 0){lowbat_gpio = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-lowbat_gpio_reversed") == 0){lowbat_gpio_reversed = atoi(argv[++i]) > 0;
-#endif
+//#endif
         } else if (strcmp(argv[i], "-battery_rsoc") == 0){strncpy(battery_rsoc_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-battery_voltage") == 0){strncpy(battery_volt_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-battery_volt_divider") == 0){battery_volt_divider = atoi(argv[++i]);
@@ -1041,16 +1099,6 @@ int main(int argc, char *argv[]){
     if (lowbat_resource > 0){
         lowbat_width = lowbat_rect.width; lowbat_height = lowbat_rect.height;
 
-        //initial buffer
-        lowbat_buffer_ptr = calloc(1, ALIGN_TO_16(lowbat_width) * ALIGN_TO_16(lowbat_height) * 4);
-        if (lowbat_buffer_ptr == NULL){print_stderr("failed to allocate low battery initial bitmap buffer.\n");
-        } else {
-            vc_dispmanx_resource_read_data(lowbat_resource, &lowbat_rect, lowbat_buffer_ptr, ALIGN_TO_16(lowbat_width) * 4);
-            lowbat_icon_bar_color = buffer_getRGBAcolor(lowbat_buffer_ptr, ALIGN_TO_16(lowbat_width), ALIGN_TO_16(lowbat_height), 9, 13);
-            lowbat_icon_bar_bg_color = buffer_getRGBAcolor(lowbat_buffer_ptr, ALIGN_TO_16(lowbat_width), ALIGN_TO_16(lowbat_height), 40, 13);
-            print_stderr("valid low battery initial bitmap buffer.\n");
-        }
-
         //resize
         double ratio = (double)lowbat_rect.height / lowbat_rect.width;
         lowbat_rect_dest.width = (double)display_width * ((double)lowbat_width_percent / 100.);
@@ -1099,6 +1147,7 @@ int main(int argc, char *argv[]){
     //double bench_start_time = -1.;
 
     print_stderr("starting main loop\n");
+    bool lowbat_trigger = false;
     while (!kill_requested){ //main loop
         double loop_start_time = get_time_double(); //loop start time
         dispmanx_update = vc_dispmanx_update_start(0); //start vc update
@@ -1138,9 +1187,13 @@ int main(int argc, char *argv[]){
 
         //low battery icon
         //lowbat_test = true; //debug
-        if (lowbat_resource > 0){ //low battery icon, disabled when header osd displayed
-            bool lowbat_trigger = lowbat_test || lowbat_gpio_check() || lowbat_sysfs();
-            if (access(battery_rsoc_path, F_OK) == 0 && lowbat_buffer_ptr != NULL){ //build low battery icon on-the-fly
+        if (lowbat_resource > 0){ //low battery icon
+            if (loop_start_time - lowbat_check_start_time > 1.){ //check every seconds
+                lowbat_trigger = lowbat_test || lowbat_gpio_check() || lowbat_sysfs();
+                lowbat_check_start_time = loop_start_time;
+            }
+
+            if (access(battery_rsoc_path, F_OK) == 0){ //build low battery icon on-the-fly
                 if (lowbat_trigger){
                     if (loop_start_time - lowbat_blink_start_time > 1.){ //update every seconds
                         lowbatt_build_element(lowbat_resource, &lowbat_element, dispmanx_update, lowbat_width, lowbat_height, lowbat_rect_dest.x, lowbat_rect_dest.y, lowbat_rect_dest.width, lowbat_rect_dest.height);
@@ -1148,7 +1201,7 @@ int main(int argc, char *argv[]){
                     }
                 } else if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
             } else if (loop_start_time - lowbat_blink_start_time > lowbat_blink){ //static low battery icon
-                if (lowbat_displayed || osd_header_start_time > 0){ //remove low battery icon
+                if (lowbat_displayed){ //remove low battery icon
                     if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
                     lowbat_displayed = false;
                 } else if (!lowbat_displayed && lowbat_trigger){ //add low battery icon
@@ -1180,6 +1233,11 @@ int main(int argc, char *argv[]){
     vc_dispmanx_update_submit_sync(dispmanx_update); //push vc update
     if (lowbat_resource > 0){vc_dispmanx_resource_delete(lowbat_resource);}
     if (osd_resource > 0){vc_dispmanx_resource_delete(osd_resource);}
+
+    //gpiod
+    #ifdef USE_GPIOD
+        if (lowbat_gpio_enabled && !gpio_ext){gpiod_line_release(gpiod_input_line);}
+    #endif
 
 	return EXIT_SUCCESS;
 }

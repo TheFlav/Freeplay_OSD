@@ -35,7 +35,10 @@ Credits goes where its due:
 <br>
 
 ### Preprocessor variables (gcc -D) to enable features:
-Note about GPIO related variables : Only one kind will be allowed at once.  
+Notes about GPIO:
+  - Only one kind of library will be allowed at once.
+  - You can also disable gpio with program argument ``-lowbat_gpio -1`` or setting [fp_osd.h](fp_osd.h) 'lowbat_gpio' variable to -1.
+  - Program will fall back on ``raspi-gpio`` program if library fails and previous line not set.
 
   - ``USE_WIRINGPI``
     * Allow to poll GPIO pin using WiringPi library for low battery detection.  
