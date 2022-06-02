@@ -37,19 +37,19 @@ Credits goes where its due:
 ### Preprocessor variables (gcc -D) to enable features:
 Notes about GPIO:
   - Only one kind of library will be allowed at once.
-  - You can also disable gpio with program argument ``-lowbat_gpio -1`` or setting [fp_osd.h](fp_osd.h) 'lowbat_gpio' variable to -1.
-  - Program will fall back on ``raspi-gpio`` program if library fails and previous line not set.
+  - You can also disable gpio with program argument ``-lowbat_gpio -1``, ``-osd_gpio -1``, ``-osd_header_gpio -1`` or setting [fp_osd.h](fp_osd.h) 'lowbat_gpio', 'osd_gpio', 'osd_header_gpio' variables to -1.
+  - Program will fall back on ``raspi-gpio`` program if library fails and previous line not set (user have to set pins to input mode on its own in this case).  
 
   - ``USE_WIRINGPI``
-    * Allow to poll GPIO pin using WiringPi library for low battery detection.  
+    * Allow to poll GPIO pins using WiringPi library (better choise if supported as it does allow multiple programs to poll the same pin).  
     * ``-lwiringPi`` needs to be added to compilation command line.  
-    * **Note for Pi Zero 2**: You may need to clone and compile for unofficial github repository as official WiringPi ended development, please refer to: https://github.com/PinkFreud/WiringPi  
+    * **Note for Pi Zero 2 users**: You may need to clone and compile for unofficial github repository as official WiringPi ended development, please refer to https://github.com/PinkFreud/WiringPi if distro repository doesn't provide valid binaries. 
   <br>
 
   - ``USE_GPIOD``
-    * Allow to poll GPIO pin using libGPIOd library for low battery detection.  
+    * Allow to poll GPIO pins using libGPIOd library.  
     * ``-lgpiod`` (``-l:libgpiod.a`` for static) needs to be added to compilation command line.  
-  <br><br>
+  <br>
 
 ### Examples:
 Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static version of libpng.  
@@ -64,7 +64,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     gcc -DUSE_GPIOD -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lgpiod
     ```
 
-  - no GPIO support  
+  - No GPIO library support  
     ```
     gcc -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/
     ```
@@ -82,8 +82,6 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     <br>
 
   - Low battery management :  
-    * ``-lowbat_gpio <GPIO_PIN>`` (\*) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
-    * ``-lowbat_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
     * ``-battery_rsoc <PATH>`` (\*\*)(\*\*\*) : Path to file containing current remaining percentage of battery.  
       Default: ``/sys/class/power_supply/battery/capacity``  
     * ``-battery_voltage <PATH>`` (\*\*)(\*\*\*) : Path to file containing current battery voltage (program can parse file with float/double format).  
@@ -93,6 +91,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-lowbat_width <1-100>`` : Low battery icon width in percent (relative to screen width).  
     * ``-lowbat_limit <0-90>`` : Threshold to trigger low battery icon in percent (require valid ``-battery_rsoc`` argument path).  
     * ``-lowbat_blink <0.1-10>`` : Low battery icon visible/hide interval in seconds.  
+    * ``-lowbat_gpio <GPIO_PIN>`` (\*) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
+    * ``-lowbat_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
     * ``-lowbat_test`` : Test mode, Low battery icon will be displayed until program closes (for test purpose).  
     <br>
 
@@ -103,6 +103,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-check <1-120>`` : Signal/GPIO check interval in hz.  
     * ``-signal_file <PATH>`` (\*\*\*) : Path to signal file, useful if you can't send signal to program.  
       Should only contain '0', SIGUSR1 or SIGUSR2 value.  
+    * ``-osd_gpio <GPIO_PIN>`` (\*) : OSD display trigger GPIO pin, set to -1 to disable.  
+    * ``-osd_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
     * ``-osd_test`` : Test mode, full OSD will be displayed until program closes (for test purpose).  
     <br>
 
@@ -117,8 +119,10 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     <br>
 
   - Header/Footer tiny OSD : 
-    * ``-header_position <t/b>`` : Tiny OSD position : Top, Bottom.  
-    * ``-header_height <1-100>`` : Tiny OSD height in percent (relative to screen height).  
+    * ``-osd_header_position <t/b>`` : Tiny OSD position : Top, Bottom.  
+    * ``-osd_header_height <1-100>`` : Tiny OSD height in percent (relative to screen height).  
+    * ``-osd_header_gpio <GPIO_PIN>`` (\*) : Tiny OSD display trigger GPIO pin, set to -1 to disable.  
+    * ``-osd_header_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
     * ``-osd_header_test`` : Test mode, Tiny OSD will be displayed until program closes (for test purpose).  
     <br>
 

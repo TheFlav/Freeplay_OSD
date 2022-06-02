@@ -224,77 +224,81 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     return resource;
 }
 
-//low battery related
-static bool lowbat_gpio_init(void){ //init low battery gpio things
-    if (lowbat_gpio < 0){print_stderr("invalid gpio low battery pin:%d.\n", lowbat_gpio); return false;} //disabled
+//gpio functions
+static void gpio_init(void){ //init gpio things
+    bool gpio_lib_failed = false;
+
     #if defined(USE_WIRINGPI) //wiringPi library
         #define WIRINGPI_CODES 1 //allow error code return
-        int err;
-        if ((err = wiringPiSetupGpio()) < 0){ //use BCM numbering
-            print_stderr("failed to initialize wiringPi, errno:%d.\n", -err);
-        } else {
-            pinMode(lowbat_gpio, INPUT);
-            print_stderr("using wiringPi to poll GPIO%d.\n", lowbat_gpio);
-            return true;
-        }
+        int err; if ((err = wiringPiSetupGpio()) < 0){print_stderr("failed to initialize wiringPi, errno:%d.\n", -err); gpio_lib_failed = true;} //use BCM numbering
     #elif defined(USE_GPIOD) //gpiod library
-        if ((gpiod_chip = gpiod_chip_open_lookup("0")) == NULL){
-            print_stderr("gpiod_chip_open_lookup failed.\n"); return false;
-        } else {
-            sprintf(gpiod_consumer_name, "%s %d OSD", program_name, lowbat_gpio);
-            if ((gpiod_input_line = gpiod_chip_get_line(gpiod_chip, lowbat_gpio)) == NULL){
-                print_stderr("gpiod_chip_get_line failed, pin:%d, consumer:'%s'.\n", lowbat_gpio, gpiod_consumer_name);
-            } else if (gpiod_line_request_both_edges_events(gpiod_input_line, gpiod_consumer_name) < 0){
-                print_stderr("gpiod_line_request_both_edges_events failed. chip:%s(%s), consumer:'%s'.\n", gpiod_chip_name(gpiod_chip), gpiod_chip_label(gpiod_chip), gpiod_consumer_name);
-            } else if ((gpiod_fd = gpiod_line_event_get_fd(gpiod_input_line)) < 0){
-                print_stderr("gpiod_line_event_get_fd failed. errno:%d, consumer:'%s'.\n", -gpiod_fd, gpiod_consumer_name);
-            } else {
-                fcntl(gpiod_fd, F_SETFL, fcntl(gpiod_fd, F_GETFL, 0) | O_NONBLOCK); //set gpiod fd to non blocking
-                print_stderr("using libGPIOd to poll GPIO%d, chip:%s(%s), consumer:'%s'.\n", lowbat_gpio, gpiod_chip_name(gpiod_chip), gpiod_chip_label(gpiod_chip), gpiod_consumer_name);
-                return true;
-            }
-        }
+        if ((gpiod_chip = gpiod_chip_open_lookup("0")) == NULL){print_stderr("gpiod_chip_open_lookup failed.\n"); gpio_lib_failed = true;}
+    #else
+        gpio_lib_failed = true;
     #endif
-    
-    if (access("/usr/bin/raspi-gpio", F_OK) == 0){
-        print_stderr("falling back to '/usr/bin/raspi-gpio' program.\n");
-        gpio_ext = true; //use external program to read gpio state
-        return true;
+
+    for (int i=0; i<gpio_pins_count; i++){
+        gpio_enabled[i] = *gpio_pin[i] > -1;
+        if (!gpio_lib_failed && gpio_enabled[i]){
+            #if defined(USE_WIRINGPI) //wiringPi library
+                pinMode(*gpio_pin[i], INPUT);
+                print_stderr("using wiringPi to poll GPIO%d.\n", *gpio_pin[i]);
+            #elif defined(USE_GPIOD) //gpiod library
+                sprintf(gpiod_consumer_name[i], "%s %d", program_name, *gpio_pin[i]);
+                if ((gpiod_input_line[i] = gpiod_chip_get_line(gpiod_chip, *gpio_pin[i])) == NULL){print_stderr("gpiod_chip_get_line failed for pin:%d.\n", *gpio_pin[i]); gpio_lib_failed = true;
+                } else if (gpiod_line_request_both_edges_events(gpiod_input_line[i], gpiod_consumer_name[i]) < 0){print_stderr("gpiod_line_request_both_edges_events failed. chip:%s(%s), consumer:'%s'.\n", gpiod_chip_name(gpiod_chip), gpiod_chip_label(gpiod_chip), gpiod_consumer_name[i]); gpio_lib_failed = true;
+                } else if ((gpiod_fd[i] = gpiod_line_event_get_fd(gpiod_input_line[i])) < 0){print_stderr("gpiod_line_event_get_fd failed. errno:%d, consumer:'%s'.\n", -gpiod_fd[i], gpiod_consumer_name[i]); gpio_lib_failed = true;
+                } else {
+                    fcntl(gpiod_fd[i], F_SETFL, fcntl(gpiod_fd[i], F_GETFL, 0) | O_NONBLOCK); //set gpiod fd to non blocking
+                    print_stderr("using libGPIOd to poll GPIO%d, chip:%s(%s), consumer:'%s'.\n", *gpio_pin[i], gpiod_chip_name(gpiod_chip), gpiod_chip_label(gpiod_chip), gpiod_consumer_name[i]);
+                }
+            #endif
+        }
     }
-    
-    return false; //disabled
+
+    if (gpio_lib_failed){
+        #ifdef USE_GPIOD
+            for (int i=0; i<gpio_pins_count; i++){
+                if (gpiod_input_line[i] != NULL){gpiod_line_release(gpiod_input_line[i]);} gpiod_fd[i] = -1;
+            }
+        #endif
+        if (access("/usr/bin/raspi-gpio", F_OK) == 0){print_stderr("falling back to '/usr/bin/raspi-gpio' program.\n"); gpio_external = true;}
+        for (int i=0; i<gpio_pins_count; i++){
+            if (gpio_external){
+                if (gpio_enabled[i]){print_stderr("gpio%d\n", *gpio_pin[i]);}
+            } else {gpio_enabled[i] = false;}
+        }
+    }
 }
 
-static bool lowbat_gpio_check(void){ //check if low battery gpio is high, false if not (incl. disabled)
-    if (!lowbat_gpio_enabled || lowbat_gpio < 0){return false;}
+static bool gpio_check(int index){ //check if gpio pin state
+    if (!gpio_enabled[index]){return false;}
     bool ret = false;
-    if (!gpio_ext){
-    #ifdef USE_WIRINGPI //wiringPi library
-        ret = digitalRead(lowbat_gpio) > 0;
-        if (lowbat_gpio_reversed){ret = !ret;} //reverse input
-    #elif defined(USE_GPIOD) //gpiod library
-        if (gpiod_fd >= 0 && gpiod_line_is_free(gpiod_input_line)){
-            int gpiod_ret = gpiod_line_get_value(gpiod_input_line);
-            if (gpiod_ret >= 0){if (lowbat_gpio_reversed){ret = !gpiod_ret;} else {ret = gpiod_ret;}} //reverse/normal input
-        }
-    #endif
+
+    if (!gpio_external){
+        #ifdef USE_WIRINGPI //wiringPi library
+            ret = digitalRead(*gpio_pin[index]) > 0;
+            if (*gpio_reversed[index]){ret = !ret;} //reverse input
+        #elif defined(USE_GPIOD) //gpiod library
+            if (gpiod_fd >= 0 && gpiod_line_is_free(gpiod_input_line[index])){
+                int gpiod_ret = gpiod_line_get_value(gpiod_input_line[index]);
+                if (gpiod_ret >= 0){if (*gpio_reversed[index]){ret = !gpiod_ret;} else {ret = gpiod_ret;}} //reverse/normal input
+            }
+        #endif
     } else {
         int tmp_gpio = -1, tmp_level = -1;
-        char buffer[32]; sprintf(buffer, "raspi-gpio get %d", lowbat_gpio);
+        char buffer[32]; sprintf(buffer, "raspi-gpio get %d", *gpio_pin[index]);
         FILE *filehandle = popen(buffer, "r");
-        if(filehandle != NULL){
-            fscanf(filehandle, "%*[^0123456789]%d%*[^0123456789]%d", &tmp_gpio, &tmp_level); //GPIO %d: level=%d fsel=1 func=INPUT
-            pclose(filehandle);
-        }
-        if (tmp_gpio == lowbat_gpio && tmp_level >= 0){
-            //printf("gpio:%d, level:%d\n", tmp_gpio, tmp_level);
+        if(filehandle != NULL){fscanf(filehandle, "%*[^0123456789]%d%*[^0123456789]%d", &tmp_gpio, &tmp_level); pclose(filehandle);} //GPIO %d: level=%d fsel=1 func=INPUT
+        if (tmp_gpio == *gpio_pin[index] && tmp_level >= 0){
             ret = tmp_level > 0;
-            if (lowbat_gpio_reversed){ret = !ret;} //reverse input
+            if (*gpio_reversed[index]){ret = !ret;} //reverse input
         }
     }
     return ret;
 }
 
+//low battery specific
 static bool lowbat_sysfs(void){ //read sysfs power_supply battery capacity, return true if threshold, false if under or file not found
     FILE *filehandle = fopen(battery_rsoc_path, "r");
     if (filehandle != NULL){
@@ -897,14 +901,7 @@ static void program_usage(void){ //display help
 
     fprintf(stderr, "Arguments:\n\t-h or -help: show arguments list.\n");
 
-    fprintf(stderr,"Low battery management:\n");
-#if defined(USE_WIRINGPI) || defined(USE_GPIOD)
-    fprintf(stderr,
-    "\t-lowbat_gpio <PIN> (-1 to disable. Default:%d).\n"
-    "\t-lowbat_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
-    , lowbat_gpio, lowbat_gpio_reversed?1:0);
-#endif
-    fprintf(stderr,
+    fprintf(stderr,"Low battery management:\n"
     "\t-battery_rsoc <PATH> (file containing battery percentage. Default:'%s').\n"
     "\t-battery_voltage <PATH> (file containing battery voltage. Default:'%s').\n"
     "\t-battery_volt_divider <NUM> (voltage divider to get voltage. Default:'%u').\n"
@@ -912,8 +909,10 @@ static void program_usage(void){ //display help
     "\t-lowbat_width <1-100> (icon width, percent of screen width. Default:%d).\n"
     "\t-lowbat_limit <0-90> (threshold, used with -battery_rsoc. Default:%d).\n"
     "\t-lowbat_blink <0.1-10> (blink interval in sec. Default:%.1lf).\n"
+    "\t-lowbat_gpio <PIN> (low battery gpio pin, -1 to disable. Default:%d).\n"
+    "\t-lowbat_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
     "\t-lowbat_test (force display of low battery icon, for test purpose).\n"
-    , battery_rsoc_path, battery_volt_path, battery_volt_divider, lowbat_pos_str, lowbat_width_percent, lowbat_limit, lowbat_blink);
+    , battery_rsoc_path, battery_volt_path, battery_volt_divider, lowbat_pos_str, lowbat_width_percent, lowbat_limit, lowbat_blink, lowbat_gpio, lowbat_gpio_reversed?1:0);
 
     fprintf(stderr,
     "\nOSD display:\n"
@@ -922,8 +921,10 @@ static void program_usage(void){ //display help
     "\t-timeout <1-20> (Hide OSD after given duration. Default:%d).\n"
     "\t-check <1-120> (check rate in hz. Default:%d).\n"
     "\t-signal_file <PATH> (useful if you can't send signal to program. Should only contain '0', SIGUSR1 or SIGUSR2 value.).\n"
+    "\t-osd_gpio <PIN> (OSD trigger gpio pin, -1 to disable. Default:%d).\n"
+    "\t-osd_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
     "\t-osd_test (full OSD display, for test purpose).\n"
-    , display_number, osd_layer, osd_timeout, osd_check_rate);
+    , display_number, osd_layer, osd_timeout, osd_check_rate, osd_gpio, osd_gpio_reversed?1:0);
 
     fprintf(stderr,
     "\nOSD styling:\n"
@@ -938,10 +939,12 @@ static void program_usage(void){ //display help
 
     fprintf(stderr,
     "\nHeader OSD specific:\n"
-    "\t-header_position <t/b> (top, bottom. Default:%s).\n"
-    "\t-header_height <1-100> (OSD height, percent of screen height. Default:%d).\n"
+    "\t-osd_header_position <t/b> (top, bottom. Default:%s).\n"
+    "\t-osd_header_height <1-100> (OSD height, percent of screen height. Default:%d).\n"
+    "\t-osd_header_gpio <PIN> (OSD trigger gpio pin, -1 to disable. Default:%d).\n"
+    "\t-osd_header_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
     "\t-osd_header_test (Tiny OSD display, for test purpose).\n"
-    , osd_header_pos_str, osd_header_height_percent);
+    , osd_header_pos_str, osd_header_height_percent, osd_header_gpio, osd_header_gpio_reversed?1:0);
 
     fprintf(stderr,
     "\nOSD data:\n"
@@ -967,10 +970,6 @@ int main(int argc, char *argv[]){
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0){program_usage(); return EXIT_SUCCESS;
 
         //Low battery management
-//#if defined(USE_WIRINGPI) || defined(USE_GPIOD)
-        } else if (strcmp(argv[i], "-lowbat_gpio") == 0){lowbat_gpio = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "-lowbat_gpio_reversed") == 0){lowbat_gpio_reversed = atoi(argv[++i]) > 0;
-//#endif
         } else if (strcmp(argv[i], "-battery_rsoc") == 0){strncpy(battery_rsoc_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-battery_voltage") == 0){strncpy(battery_volt_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-battery_volt_divider") == 0){battery_volt_divider = atoi(argv[++i]);
@@ -981,6 +980,8 @@ int main(int argc, char *argv[]){
             if (int_constrain(&lowbat_limit, 0, 90) != 0){print_stderr("invalid -lowbat_limit argument, reset to '%d', allow from '0' to '90' (incl.)\n", lowbat_limit);}
         } else if (strcmp(argv[i], "-lowbat_blink") == 0){double tmp = atof(argv[++i]);
             if (tmp < 0.1 || tmp > 10.){print_stderr("invalid -lowbat_blink argument, reset to '%.1lf', allow from '1' to '10' (incl.)\n", lowbat_blink);} else {lowbat_blink = tmp;}
+        } else if (strcmp(argv[i], "-lowbat_gpio") == 0){lowbat_gpio = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-lowbat_gpio_reversed") == 0){lowbat_gpio_reversed = atoi(argv[++i]) > 0;
         } else if (strcmp(argv[i], "-lowbat_test") == 0){lowbat_test = true; print_stderr("low battery icon will be displayed until program closes\n");
 
         //OSD display
@@ -992,6 +993,8 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-check") == 0){osd_check_rate = atoi(argv[++i]);
             if (int_constrain(&osd_check_rate, 1, 120) != 0){print_stderr("invalid -check argument, reset to '%d', allow from '1' to '120' (incl.)\n", osd_check_rate);}
         } else if (strcmp(argv[i], "-signal_file") == 0){strncpy(signal_path, argv[++i], PATH_MAX-1);
+        } else if (strcmp(argv[i], "-osd_gpio") == 0){osd_gpio = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-osd_gpio_reversed") == 0){osd_gpio_reversed = atoi(argv[++i]) > 0;
         } else if (strcmp(argv[i], "-osd_test") == 0){osd_test = true; print_stderr("full OSD will be displayed until program closes\n");
 
         //OSD styling
@@ -1005,9 +1008,11 @@ int main(int argc, char *argv[]){
             if (int_constrain(&osd_text_padding, 0, 100) != 0){print_stderr("invalid -text_padding argument, reset to '%d', allow from '0' to '100' (incl.)\n", osd_text_padding);}
 
         //Tiny OSD specific
-        } else if (strcmp(argv[i], "-header_position") == 0){strncpy(osd_header_pos_str, argv[++i], sizeof(osd_header_pos_str));
-        } else if (strcmp(argv[i], "-header_height") == 0){osd_header_height_percent = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-osd_header_position") == 0){strncpy(osd_header_pos_str, argv[++i], sizeof(osd_header_pos_str));
+        } else if (strcmp(argv[i], "-osd_header_height") == 0){osd_header_height_percent = atoi(argv[++i]);
             if (int_constrain(&osd_header_height_percent, 1, 100) != 0){print_stderr("invalid -header_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", osd_header_height_percent);}
+        } else if (strcmp(argv[i], "-osd_header_gpio") == 0){osd_header_gpio = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-osd_header_gpio_reversed") == 0){osd_header_gpio_reversed = atoi(argv[++i]) > 0;
         } else if (strcmp(argv[i], "-osd_header_test") == 0){osd_header_test = true; print_stderr("tiny OSD will be displayed until program closes\n");
 
         //OSD data
@@ -1065,7 +1070,7 @@ int main(int argc, char *argv[]){
     DISPMANX_UPDATE_HANDLE_T dispmanx_update = vc_dispmanx_update_start(0);
     if (dispmanx_update == 0){print_stderr("FATAL: vc_dispmanx_update_start() test failed.\n"); return EXIT_FAILURE;}
     if (vc_dispmanx_update_submit_sync(dispmanx_update) != 0){print_stderr("FATAL: vc_dispmanx_update_submit_sync(%u) test failed.\n", dispmanx_update); return EXIT_FAILURE;}
-    print_stderr("dispmanx test update successful.\n");
+    print_stderr("dispmanx update test successful.\n");
 
     //convert html colors to usable colors
     if (!html_to_uint32_color(osd_color_bg_str, &osd_color_bg)){print_stderr("warning, invalid -bg_color argument.\n"); //background raw color
@@ -1085,8 +1090,7 @@ int main(int argc, char *argv[]){
         }
     }
 
-    //low battery gpio
-    lowbat_gpio_enabled = lowbat_gpio_init();
+    if (lowbat_gpio > -1 || osd_gpio > -1 || osd_header_gpio > -1){gpio_init();} //gpio
 
     //low battery icon
     VC_RECT_T lowbat_rect = {0};
@@ -1147,40 +1151,46 @@ int main(int argc, char *argv[]){
     //double bench_start_time = -1.;
 
     print_stderr("starting main loop\n");
-    bool lowbat_trigger = false;
+    bool lowbat_trigger = lowbat_test;
     while (!kill_requested){ //main loop
         double loop_start_time = get_time_double(); //loop start time
         dispmanx_update = vc_dispmanx_update_start(0); //start vc update
 
-        if (allow_signal_file && !signal_file_used){ //check signal file value
+        if (osd_test){osd_start_time = loop_start_time;}
+        if (osd_header_test){osd_header_start_time = loop_start_time;}
+
+        if (allow_signal_file && !signal_file_used && osd_start_time < 0 && osd_header_start_time < 0){ //check signal file value
             int tmp_sig = 0;
             FILE *filehandle = fopen(signal_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &tmp_sig); fclose(filehandle);}
-            if (tmp_sig == SIGUSR1 && osd_start_time < 0){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
-            } else if (tmp_sig == SIGUSR2 && osd_header_start_time < 0){osd_header_start_time = loop_start_time; signal_file_used = true;} //header osd
+            if (tmp_sig == SIGUSR1/* && osd_start_time < 0*/){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
+            } else if (tmp_sig == SIGUSR2/* && osd_header_start_time < 0*/){osd_header_start_time = loop_start_time; signal_file_used = true;} //header osd
+        }
+
+        if (loop_start_time - gpio_check_start_time > 0.25){ //check gpio 4 times a second
+            if (osd_start_time < 0 && gpio_check(1)){osd_start_time = loop_start_time;} //osd gpio trigger
+            if (osd_header_start_time < 0 && gpio_check(2)){osd_header_start_time = loop_start_time;} //tiny osd gpio trigger
+            if (!lowbat_test && loop_start_time - lowbat_check_start_time > 1.){lowbat_trigger = gpio_check(0) || lowbat_sysfs(); lowbat_check_start_time = loop_start_time;} //check low battery every seconds
+            gpio_check_start_time = loop_start_time;
         }
 
         //full osd
-        //osd_test = true; //debug
-        if (osd_test){osd_start_time = loop_start_time;}
-        if (osd_start_time > 0){
+        if (osd_resource > 0 && osd_start_time > 0){
             if (loop_start_time - osd_start_time > (double)osd_timeout){ //osd timeout
                 if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element); osd_element = 0;}
                 if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                 osd_start_time = -1.;
-            } else if (osd_header_start_time < 0 && osd_resource > 0){ //only if header osd not displayed
+            } else if (osd_header_start_time < 0/* && osd_resource > 0*/){ //only if header osd not displayed
                 osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
             }
         }
 
         //header osd
-        //osd_header_test = true; //debug
-        if (osd_header_test){osd_header_start_time = loop_start_time;}
-        if (osd_header_start_time > 0){
+        if (osd_header_resource > 0 && osd_header_start_time > 0){
             if (loop_start_time - osd_header_start_time > (double)osd_timeout){ //osd timeout
                 if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element); osd_header_element = 0;}
                 if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                 osd_header_start_time = -1.;
-            } else if (osd_start_time < 0 && osd_header_resource > 0){ //only if full osd not displayed
+            } else if (osd_start_time < 0/* && osd_header_resource > 0*/){ //only if full osd not displayed
                 osd_header_build_element(osd_header_resource, &osd_header_element, dispmanx_update, osd_header_width, osd_header_height, 0, osd_header_y, display_width, osd_header_height_dest);
             }
         }
@@ -1188,11 +1198,6 @@ int main(int argc, char *argv[]){
         //low battery icon
         //lowbat_test = true; //debug
         if (lowbat_resource > 0){ //low battery icon
-            if (loop_start_time - lowbat_check_start_time > 1.){ //check every seconds
-                lowbat_trigger = lowbat_test || lowbat_gpio_check() || lowbat_sysfs();
-                lowbat_check_start_time = loop_start_time;
-            }
-
             if (access(battery_rsoc_path, F_OK) == 0){ //build low battery icon on-the-fly
                 if (lowbat_trigger){
                     if (loop_start_time - lowbat_blink_start_time > 1.){ //update every seconds
@@ -1236,7 +1241,7 @@ int main(int argc, char *argv[]){
 
     //gpiod
     #ifdef USE_GPIOD
-        if (lowbat_gpio_enabled && !gpio_ext){gpiod_line_release(gpiod_input_line);}
+        for (int i=0; i<gpio_pins_count; i++){if (gpiod_input_line[i] != NULL){gpiod_line_release(gpiod_input_line[i]);}}
     #endif
 
 	return EXIT_SUCCESS;

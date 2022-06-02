@@ -25,6 +25,7 @@ Please refer to fp_osd.c for more informations.
 #include <ifaddrs.h>
 
 //gpio library
+#define gpio_pins_count 3 //amount of pins to monitor
 #if defined(USE_WIRINGPI) && defined(USE_GPIOD) 
     #error "Only one kind of gpio library allowed at once, please refer to README.md for more informations."
 #elif defined(USE_WIRINGPI)
@@ -32,9 +33,12 @@ Please refer to fp_osd.c for more informations.
 #elif defined(USE_GPIOD)
     #include <gpiod.h>
 	struct gpiod_chip *gpiod_chip;
-	struct gpiod_line *gpiod_input_line;
-    int gpiod_fd = -1;
-    char gpiod_consumer_name[128];
+	struct gpiod_line *gpiod_input_line[gpio_pins_count];
+    int gpiod_fd[gpio_pins_count];
+    char gpiod_consumer_name[gpio_pins_count][128];
+	//struct gpiod_line *gpiod_input_line;
+    //int gpiod_fd = -1;
+    //char gpiod_consumer_name[128];
 #endif
 
 //prototypes
@@ -51,8 +55,10 @@ static uint32_t buffer_getRGBAcolor(void* /*buffer*/, uint32_t /*width*/, uint32
 
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* /*filename*/, VC_RECT_T* /*image_rect_ptr*/); //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
 
-static bool lowbat_gpio_init(void); //init low battery gpio things
-static bool lowbat_gpio_check(void); //check if low battery gpio is high, false if not (incl. disabled)
+static void gpio_init(void); //init gpio things
+static bool gpio_check(int /*index*/); //check if gpio pin state
+//static bool lowbat_gpio_init(void); //init low battery gpio things
+//static bool lowbat_gpio_check(void); //check if low battery gpio is high, false if not (incl. disabled)
 static bool lowbat_sysfs(void); //read sysfs power_supply battery capacity, return true if threshold, false if under or file not found
 
 void osd_build_element(DISPMANX_RESOURCE_HANDLE_T /*resource*/, DISPMANX_ELEMENT_HANDLE_T */*element*/, DISPMANX_UPDATE_HANDLE_T /*update*/, uint32_t /*osd_width*/, uint32_t /*osd_height*/, uint32_t /*x*/, uint32_t /*y*/, uint32_t /*width*/, uint32_t /*height*/);
@@ -76,6 +82,8 @@ char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
 char signal_path[PATH_MAX] = {'\0'}; //full path to signal file
 
 //osd
+int osd_gpio = -1; //gpio pin, -1 to disable
+bool osd_gpio_reversed = false; //gpio pin active low
 int display_number = 0; //dispmanx display num
 int osd_layer = 10000; //dispmanx layer, full osd:+1, low battery:+2, tiny osd:+3
 int osd_check_rate = 30; //osd check rate in hz
@@ -97,6 +105,8 @@ int osd_header_height_percent = 5; //height percent relative to screen height
 double osd_header_start_time = -1.; //osd start time
 char osd_header_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
 void *osd_header_buffer_ptr = NULL; //bitmap buffer pointer
+int osd_header_gpio = -1; //gpio pin, -1 to disable
+bool osd_header_gpio_reversed = false; //gpio pin active low
 
 //osd: general
 char rtc_path[PATH_MAX] = "/sys/class/rtc/rtc0/"; //absolute path to rtc class
@@ -108,15 +118,8 @@ char backlight_max_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight_max"; 
 
 //osd: low battery
 bool lowbat_test = false; //force display of low battery icon, for test purpose
-bool lowbat_gpio_enabled = false; //use gpio pin, leave as is, defined during runtime
-bool gpio_ext = false; //use external program to read gpio state
-
-//#if defined(USE_WIRINGPI) || defined(USE_GPIOD)  //low bat gpio
-    bool lowbat_gpio_reversed = true; //gpio pin active low
-    int lowbat_gpio = 10; //gpio pin, -1 to disable
-//#else
-//    int lowbat_gpio = -1; //disabled
-//#endif
+int lowbat_gpio = 10; //gpio pin, -1 to disable
+bool lowbat_gpio_reversed = true; //gpio pin active low
 
 DISPMANX_RESOURCE_HANDLE_T lowbat_resource = 0;
 char* lowbat_img_file = "res/low_battery.png"; //low battery icon filename
@@ -134,6 +137,13 @@ double lowbat_check_start_time = -1.; //low battery gpio and rsoc check start ti
 char battery_rsoc_path[PATH_MAX] = "/sys/class/power_supply/battery/capacity"; //absolute path to battery rsoc
 char battery_volt_path[PATH_MAX] = "/sys/class/power_supply/battery/voltage_now"; //absolute path to battery voltage
 uint32_t battery_volt_divider = 1000000; //divide voltage by given value to get volt
+
+//gpio, order:lowbatt, osd, tiny osd
+bool gpio_external = false; //use external program to read gpio state
+bool gpio_enabled[gpio_pins_count] = {0}; //use gpio triggers, leave as is, defined during runtime
+int *gpio_pin[gpio_pins_count] = {&lowbat_gpio, &osd_gpio, &osd_header_gpio}; //gpio pins, leave as is, defined during runtime
+bool *gpio_reversed[gpio_pins_count] = {&lowbat_gpio_reversed, &osd_gpio_reversed, &osd_header_gpio_reversed}; //gpio signal reversed, leave as is, defined during runtime
+double gpio_check_start_time = -1.;
 
 //dispmanx
 #ifndef ALIGN_TO_16
