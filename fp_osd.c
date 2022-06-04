@@ -784,7 +784,7 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
             VC_RECT_T tmp_rect = {.width=icon_width, .height=icon_height};
             vc_dispmanx_resource_read_data(resource, &tmp_rect, lowbat_buffer_ptr, icon_width_16 * 4);
             lowbat_icon_bar_color = buffer_getcolor_rgba(lowbat_buffer_ptr, icon_width_16, icon_height_16, 9, 13);
-            lowbat_icon_bar_bg_color = buffer_getcolor_rgba(lowbat_buffer_ptr, icon_width_16, icon_height_16, 40, 13);
+            lowbat_icon_bar_bg_color = buffer_getcolor_rgba(lowbat_buffer_ptr, icon_width_16, icon_height_16, 34, 13);
         }
     }
     
@@ -829,7 +829,7 @@ void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
         if (cputemp_buffer_ptr != NULL){
             VC_RECT_T tmp_rect = {.width=icon_width, .height=icon_height};
             vc_dispmanx_resource_read_data(resource, &tmp_rect, cputemp_buffer_ptr, icon_width_16 * 4);
-            cputemp_icon_bg_color = buffer_getcolor_rgba(cputemp_buffer_ptr, icon_width_16, icon_height_16, 9, 13);
+            cputemp_icon_bg_color = buffer_getcolor_rgba(cputemp_buffer_ptr, icon_width_16, icon_height_16, 30, 13);
         }
     }
     
@@ -994,9 +994,10 @@ static void program_usage(void){ //display help
     "\nOSD data:\n"
     "\t-rtc <PATH> (if invalid, uptime will be used. Default:'%s').\n"
     "\t-cpu_thermal <PATH> (file containing CPU temperature. Default:'%s').\n"
+    "\t-cpu_thermal_divider <NUM> (divider to get actual temperature. Default:'%u').\n"
     "\t-backlight <PATH> (file containing backlight current value. Default:'%s').\n"
     "\t-backlight_max <PATH> (file containing backlight maximum value. Default:'%s').\n"
-    , rtc_path, cpu_thermal_path, backlight_path, backlight_max_path);
+    , rtc_path, cpu_thermal_path, cpu_thermal_divider, backlight_path, backlight_max_path);
 
     fprintf(stderr,
     "\nProgram:\n"
@@ -1025,6 +1026,7 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-battery_rsoc") == 0){strncpy(battery_rsoc_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-battery_voltage") == 0){strncpy(battery_volt_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-battery_volt_divider") == 0){battery_volt_divider = atoi(argv[++i]);
+            if (battery_volt_divider == 0){print_stderr("invalid -battery_volt_divider argument, reset to '1', value needs to be over 0\n"); battery_volt_divider = 1;}
         } else if (strcmp(argv[i], "-lowbat_limit") == 0){lowbat_limit = atoi(argv[++i]);
             if (int_constrain(&lowbat_limit, 0, 90) != 0){print_stderr("invalid -lowbat_limit argument, reset to '%d', allow from '0' to '90' (incl.)\n", lowbat_limit);}
         } else if (strcmp(argv[i], "-lowbat_gpio") == 0){lowbat_gpio = atoi(argv[++i]);
@@ -1064,6 +1066,8 @@ int main(int argc, char *argv[]){
         //OSD data
         } else if (strcmp(argv[i], "-rtc") == 0){strncpy(rtc_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-cpu_thermal") == 0){strncpy(cpu_thermal_path, argv[++i], PATH_MAX-1);
+        } else if (strcmp(argv[i], "-cpu_thermal_divider") == 0){cpu_thermal_divider = atoi(argv[++i]);
+            if (cpu_thermal_divider == 0){print_stderr("invalid -cpu_thermal_divider argument, reset to '1', value needs to be over 0\n"); cpu_thermal_divider = 1;}
         } else if (strcmp(argv[i], "-backlight") == 0){strncpy(backlight_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-backlight_max") == 0){strncpy(backlight_max_path, argv[++i], PATH_MAX-1);
 

@@ -9,11 +9,13 @@ It happens in two ways (detailed in lower sections):
 This program targets Raspberry Pi platforms as it rely on Dispmanx API and is meant to run as a daemon.  
 Currently tested on Pi3, Zero 2.  
 
-/!\ Very early version, still under developpement.
+/!\ Early version, still under developpement.  
+
+Keeping documentation up-to-date during development cycle is pretty difficult, a few things may be outdated or not properly documented (even not)... Sorry about that.  
 
 Credits goes where its due:
-- This project is inspirated by Retropie-open-OSD (https://github.com/vascofazza/Retropie-open-OSD).
-- Contain modified and unmodified code from Raspidmx (https://github.com/AndrewFromMelbourne/raspidmx).  
+- This project is inspirated by Retropie-open-OSD project (https://github.com/vascofazza/Retropie-open-OSD).
+- Contain modified code from Raspidmx project (https://github.com/AndrewFromMelbourne/raspidmx).  
 <br>
   
 ## Preview:
@@ -35,20 +37,25 @@ Credits goes where its due:
 <br>
 
 ### Preprocessor variables (gcc -D) to enable features:
-Notes about GPIO:
+- GPIO library support:
   - Only one kind of library will be allowed at once.
   - You can also disable gpio with program argument ``-lowbat_gpio -1``, ``-osd_gpio -1``, ``-osd_header_gpio -1`` or setting [fp_osd.h](fp_osd.h) 'lowbat_gpio', 'osd_gpio', 'osd_header_gpio' variables to -1.
-  - Program will fall back on ``raspi-gpio`` program if library fails and previous line not set (user have to set pins to input mode on its own in this case).  
+  - Program will fall back on ``raspi-gpio`` program if library fails and at least one GPIO pin not disabled (user will have to set pins to input mode on there own in this case).  
 
   - ``USE_WIRINGPI``
     * Allow to poll GPIO pins using WiringPi library (better choise if supported as it does allow multiple programs to poll the same pin).  
     * ``-lwiringPi`` needs to be added to compilation command line.  
-    * **Note for Pi Zero 2 users**: You may need to clone and compile for unofficial github repository as official WiringPi ended development, please refer to https://github.com/PinkFreud/WiringPi if distro repository doesn't provide valid binaries. 
+    * **Note for Pi Zero 2 users**: You may need to clone and compile for unofficial github repository as official WiringPi ended development, please refer to https://github.com/PinkFreud/WiringPi if your distribution repository doesn't provide updated binaries. 
   <br>
 
   - ``USE_GPIOD``
     * Allow to poll GPIO pins using libGPIOd library.  
     * ``-lgpiod`` (``-l:libgpiod.a`` for static) needs to be added to compilation command line.  
+    * **Important note**: Will fail if one GPIO pin already used by another program.  
+  <br>
+
+- Debug:
+  - ``CHARSET_EXPORT``: Export current character set defined in [font.h](font.h) to **res/raspidmx_charset.png** and **res/icons_charset.png** when program starts, should only be used during development.  
   <br>
 
 ### Examples:
@@ -84,8 +91,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
   - Warning icons :  
     * ``-icons_pos <tl/tr/bl/br>`` : icons position on screen : Top Left,Right, Bottom Left,Right.  
     * ``-icons_height <1-100>`` : icons height in percent (relative to screen height).  
-    * ``-lowbat_test`` : Test mode, Low battery icon will be displayed until program closes (for test purpose).  
-    * ``-cputemp_test`` : Test mode, CPU temperature warning icon will be displayed until program closes (for test purpose).  
+    * ``-lowbat_test`` : Low battery icon will be displayed until program closes (for test purpose).  
+    * ``-cputemp_test`` : CPU temperature warning icon will be displayed until program closes (for test purpose).  
     <br>
   
   - Low battery management :  
@@ -108,7 +115,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
       Should only contain '0', SIGUSR1 or SIGUSR2 value.  
     * ``-osd_gpio <GPIO_PIN>`` (\*) : OSD display trigger GPIO pin, set to -1 to disable.  
     * ``-osd_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
-    * ``-osd_test`` : Test mode, full OSD will be displayed until program closes (for test purpose).  
+    * ``-osd_test`` : full OSD will be displayed until program closes (for test purpose).  
     <br>
 
   - OSD styling :  
@@ -122,17 +129,18 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     <br>
 
   - Header/Footer tiny OSD : 
-    * ``-osd_header_position <t/b>`` : Tiny OSD position : Top, Bottom.  
-    * ``-osd_header_height <1-100>`` : Tiny OSD height in percent (relative to screen height).  
-    * ``-osd_header_gpio <GPIO_PIN>`` (\*) : Tiny OSD display trigger GPIO pin, set to -1 to disable.  
+    * ``-osd_header_position <t/b>`` : Position : Top, Bottom.  
+    * ``-osd_header_height <1-100>`` : Height in percent (relative to screen height).  
+    * ``-osd_header_gpio <GPIO_PIN>`` (\*) : Display trigger GPIO pin, set to -1 to disable.  
     * ``-osd_header_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
-    * ``-osd_header_test`` : Test mode, Tiny OSD will be displayed until program closes (for test purpose).  
+    * ``-osd_header_test`` : Tiny OSD will be displayed until program closes (for test purpose).  
     <br>
 
   - OSD data :  
     * ``-rtc <PATH>`` (\*\*) : Path used to check if RTC module installed.  
     * ``-cpu_thermal <PATH>`` (\*\*)(\*\*\*) : Path to file containing current CPU temperature.  
       Default: ``/sys/class/thermal/thermal_zone0/temp``  
+    * ``-cpu_thermal_divider <NUM>`` : Divider to get actual temperature (1000 for celcius by default on Pi).  
     * ``-backlight <PATH>`` (\*\*)(\*\*\*) : File containing backlight current value.  
     * ``-backlight_max <PATH>`` (\*\*)(\*\*\*) : File containing backlight maximum value.  
 <br>
@@ -141,6 +149,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 **Notes:** May change without notice, Displayed elements depends on current hardware setup.  
 Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for Tiny OSD.  
 If you can't directly send a signal to the program, a file can be used as alternative solution with argument ``-signal_file <PATH>``.  
+Can also be displayed with GPIO, ``-osd_gpio <PIN>`` argument for Full OSD and ``-osd_header_gpio <PIN>`` argument for Tiny OSD.  
   
 (F/H) : Full OSD and Tiny OSD.  
 
@@ -171,52 +180,70 @@ If you can't directly send a signal to the program, a file can be used as altern
   Wifi RX bitrate and signal strength (Require ``iw`` program) (F/H).  
 <br>
 
-### Warning icons :
-todo
-priority : low battery, cpu temp
-
-
-### Low battery icon (when triggered):
-If no valid battery RSOC file provided (``-battery_rsoc <PATH>``), static icon will be displayed.  
-Else, icon will be updated on-the-fly with last detected RSOC value.  
-**Note:** If for whatever reason, RSOC file fails to read (but was before), displayed icon (blinking) will keep last updated information.  
-
-- Icon layout (hardcoded)(X,Y):
-  - Bars:
-    - 25% : 5,5 to 13,22
-    - 50% : 16,5 to 22,22
-    - 75% : 26,5 to 33,22
-    - 100% : 36,5 to 44,22  
-  - RSOC:
-    - Digit 1 : 9,6 to 16,21
-    - Digit 2 : 17,6 to 24,21
-    - Digit 3 : 25,6 to 32,21
-    - Percent character : 33,6 to 40,21  
+## Warning icons:
+Priority:
+  1) Low battery  
+  2) CPU temperature  
+  
+**Important note**: Since the program uses bitmap font for text display, icons (before program scales them) needs to account for characters of 8x16 pixels.  
+Current program character set: [raspidmx_charset.png](res/raspidmx_charset.png).  
 <br>
 
-- Bars colors (update on-the-fly):
-  - Background color is picked on file 100% bar color.
-  - Normal color is picked on file 25% bar color.
+### Low battery icon:
+Require valid GPIO pin defined (``-lowbat_gpio <PIN>`` argument) and/or valid battery RSOC file (``-battery_rsoc <PATH>`` argument).  
+If RSOC file is invalid, static icon will be displayed.  
+Else, icon will be updated on-the-fly with last detected RSOC value.  
+**Note:** If for whatever reason, RSOC file fails to read (but wasn't before), static icon will keep last updated information.  
+
+- Icon layout (hardcoded)(X,Y), [low_battery_template.png](res/low_battery_template.png) for reference:
+  - RSOC bar:
+    - X : 4 (0%) to 39 (100%)
+    - Y : 6 to 21
+  - RSOC:
+    - Digit 1 : 6,6 to 13,21
+    - Digit 2 : 14,6 to 21,21
+    - Digit 3 : 22,6 to 29,21
+    - Percent character : 30,6 to 37,21  
+<br>
+
+- RSOC bar colors (updated at runtime):
+  - Background color is picked at 34,13.
+  - Normal color is picked at 9,13.
   - Warning color is based on ``-warn_color <RGB,RGBA>`` argument.
   - Critical color is based on ``-crit_color <RGB,RGBA>`` argument.
 <br><br>
-  
 
+### CPU overheat icon:
+Require valid temperature file (``-cpu_thermal <PATH>`` argument), you may also need to update divider (``-cpu_thermal_divider <NUM>`` argument).  
+If file is invalid, icon will never be displayed.  
 
+- Icon layout (hardcoded)(X,Y), [temp_warn_template.png](res/temp_warn_template.png) for reference:
+  - Temperature:
+    - Digit 1 : 2,6 to 9,21
+    - Digit 2 : 10,6 to 17,21
+    - Digit 3 : 18,6 to 25,21
+    - Percent character : 26,6 to 33,21  
+<br>
 
-
+- Colors (updated at runtime):
+  - Background color is picked at 30,13.
+  - Normal color is based on ``-text_color <RGB,RGBA>`` argument.
+  - Warning color is based on ``-warn_color <RGB,RGBA>`` argument.
+  - Critical color is based on ``-crit_color <RGB,RGBA>`` argument.
+<br><br>
 
 ## Repository files
 - **res/** : Contain resources linked to the program like icons and other.
 - **font.h** : Bitmap font from Raspidmx project.
 - **fp_osd.h**/**fp_osd.c** : OSD program.
+- **settings.h** : User settings, mostly settable with program arguments.
 - **compile.sh** : Sample script to compile program.
 - **osd.sh**/**osdbar.sh** : Sample script to send signal to OSD program.
 <br><br>
   
 ## Missing features
 Section to be considered as a pseudo todo.  
-- Full rework.
+- Full screen/Tiny OSD rework.
 <br><br>
 
 ## Known issue(s)
