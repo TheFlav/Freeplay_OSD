@@ -3,7 +3,6 @@ FreeplayTech On-screen (heads-up) display overlay
 
 Main header file.
 Please refer to fp_osd.c for more informations.
-
 */
 
 #include <unistd.h>
@@ -24,6 +23,8 @@ Please refer to fp_osd.c for more informations.
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
+#include "settings.h" //user settings vars
+
 //gpio library
 #define gpio_pins_count 3 //amount of pins to monitor
 #if defined(USE_WIRINGPI) && defined(USE_GPIOD) 
@@ -36,30 +37,26 @@ Please refer to fp_osd.c for more informations.
 	struct gpiod_line *gpiod_input_line[gpio_pins_count];
     int gpiod_fd[gpio_pins_count];
     char gpiod_consumer_name[gpio_pins_count][128];
-	//struct gpiod_line *gpiod_input_line;
-    //int gpiod_fd = -1;
-    //char gpiod_consumer_name[128];
 #endif
 
 //prototypes
 static double get_time_double(void); //get time in double (seconds), takes around 82 microseconds to run
 
-static void raspidmx_setPixelRGBA32(void* /*buffer*/, int /*buffer_width*/, int32_t /*x*/, int32_t /*y*/, uint32_t /*color*/); //modified version from Raspidmx
+//static void raspidmx_setPixelRGBA32(void* /*buffer*/, int /*buffer_width*/, int32_t /*x*/, int32_t /*y*/, uint32_t /*color*/); //modified version from Raspidmx
 static int32_t raspidmx_drawCharRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, uint8_t /*c*/, uint8_t* /*font_ptr*/, uint32_t /*color*/); //modified version from Raspidmx, return end position of printed char
 static VC_RECT_T raspidmx_drawStringRGBA32(void* /*buffer*/, int /*buffer_width*/, int /*buffer_height*/, int32_t /*x*/, int32_t /*y*/, const char* /*string*/, uint8_t* /*font_ptr*/, uint32_t /*color*/, uint32_t* /*outline_color*/); //modified version of Raspidmx drawStringRGB() function. Return end position of printed string, text box size
 
 static void buffer_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, uint32_t /*rgba_color*/); //fill buffer with given color
 static void buffer_rectangle_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/, int32_t /*w*/, int32_t /*h*/, uint32_t /*rgba_color*/); //fill rectangle with given color
 static void buffer_horizontal_line(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x1*/, int32_t /*x2*/, int32_t /*y*/, uint32_t /*rgba_color*/); //draw horizontal line
-static uint32_t buffer_getRGBAcolor(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/); //get specific color from buffer
+static uint32_t buffer_getcolor_rgba(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/); //get specific color from buffer
 
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* /*filename*/, VC_RECT_T* /*image_rect_ptr*/); //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
 
 static void gpio_init(void); //init gpio things
 static bool gpio_check(int /*index*/); //check if gpio pin state
-//static bool lowbat_gpio_init(void); //init low battery gpio things
-//static bool lowbat_gpio_check(void); //check if low battery gpio is high, false if not (incl. disabled)
 static bool lowbat_sysfs(void); //read sysfs power_supply battery capacity, return true if threshold, false if under or file not found
+static bool cputemp_sysfs(void); //read sysfs cpu temperature, return true if threshold, false if under or file not found
 
 void osd_build_element(DISPMANX_RESOURCE_HANDLE_T /*resource*/, DISPMANX_ELEMENT_HANDLE_T */*element*/, DISPMANX_UPDATE_HANDLE_T /*update*/, uint32_t /*osd_width*/, uint32_t /*osd_height*/, uint32_t /*x*/, uint32_t /*y*/, uint32_t /*width*/, uint32_t /*height*/);
 
@@ -76,74 +73,33 @@ static void program_usage(void); //display help
 const char program_version[] = "0.1a"; //program version
 const char dev_webpage[] = "https://github.com/TheFlav/Freeplay_OSD"; //dev website
 bool debug = true, kill_requested = false, already_killed = false;
-double program_start_time = .0;
 char program_path[PATH_MAX] = {'\0'}, program_name[PATH_MAX] = {'\0'}; //full path to this program
 char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
-char signal_path[PATH_MAX] = {'\0'}; //full path to signal file
 
-//osd
-int osd_gpio = -1; //gpio pin, -1 to disable
-bool osd_gpio_reversed = false; //gpio pin active low
-int display_number = 0; //dispmanx display num
-int osd_layer = 10000; //dispmanx layer, full osd:+1, low battery:+2, tiny osd:+3
-int osd_check_rate = 30; //osd check rate in hz
-//int osd_signal = SIGUSR1; //trigger signal
-int osd_timeout = 5; //timeout in sec
-int osd_max_lines = 16; //max number of lines to display on screen without spacing
-int osd_text_padding = 5; //text distance to screen border
-bool osd_test = false; //force display of full OSD, for test purpose
+//start time
+double program_start_time = .0; //used for print output
 double osd_start_time = -1.; //osd start time
-void *osd_buffer_ptr = NULL; //bitmap buffer pointer
-char osd_color_bg_str[9] = "00000050"; uint32_t osd_color_bg = 0, osd_color_text_bg = 0; //background raw color (rgba)
-char osd_color_text_str[9] = "FFFFFF"; uint32_t osd_color_text = 0, osd_color_separator = 0; //text raw color (rgba)
-char osd_color_warn_str[9] = "ffa038"/*"FF7F27"*/; uint32_t osd_color_warn = 0; //warning text raw color (rgba)
-char osd_color_crit_str[9] = "ff5548"/*"EB3324"*/; uint32_t osd_color_crit = 0; //critical text raw color (rgba)
+double osd_header_start_time = -1.; //tiny osd start time
 
-//header osd
-bool osd_header_test = false; //force display of header OSD, for test purpose
-int osd_header_height_percent = 5; //height percent relative to screen height
-double osd_header_start_time = -1.; //osd start time
-char osd_header_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
-void *osd_header_buffer_ptr = NULL; //bitmap buffer pointer
-int osd_header_gpio = -1; //gpio pin, -1 to disable
-bool osd_header_gpio_reversed = false; //gpio pin active low
+//cpu data
+int32_t cputemp_curr = -1, cputemp_last = -2; //current cpu temperature
+uint32_t cputemp_icon_bg_color = 0xFF000000;
 
-//osd: general
-char rtc_path[PATH_MAX] = "/sys/class/rtc/rtc0/"; //absolute path to rtc class
-char cpu_thermal_path[PATH_MAX] = "/sys/class/thermal/thermal_zone0/temp"; //absolute path to cpu temperature file
-char backlight_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight"; //absolute path to current backlight file
-char backlight_max_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight_max"; //absolute path to max backlight file
-#define cpu_thermal_divider 1000 //divide temp by given value to get celsus
-#define memory_divider 1024 //divide memory by given value to get mB
-
-//osd: low battery
-bool lowbat_test = false; //force display of low battery icon, for test purpose
-int lowbat_gpio = 10; //gpio pin, -1 to disable
-bool lowbat_gpio_reversed = true; //gpio pin active low
-
-DISPMANX_RESOURCE_HANDLE_T lowbat_resource = 0;
-char* lowbat_img_file = "res/low_battery.png"; //low battery icon filename
-char lowbat_pos_str[3] = "tr"; //raw image position, tl,tr,bl,br. Real position computed at runtime
-int lowbat_width_percent = 13; //low battery icon width percent relative to screen width
-#define lowbat_padding 10 //icon distance to display borders
-void *lowbat_buffer_ptr = NULL; //bitmap buffer pointer
+//battery data
 uint32_t lowbat_icon_bar_color = 0xFF000000, lowbat_icon_bar_bg_color = 0xFF000000;
-
-int lowbat_limit = 10; //low battery icon display threshold (percent)
-double lowbat_blink = .5; //low battery icon blink interval in sec
-double lowbat_blink_start_time = -1.; //low battery icon blink start time
-double lowbat_check_start_time = -1.; //low battery gpio and rsoc check start time
-
-char battery_rsoc_path[PATH_MAX] = "/sys/class/power_supply/battery/capacity"; //absolute path to battery rsoc
-char battery_volt_path[PATH_MAX] = "/sys/class/power_supply/battery/voltage_now"; //absolute path to battery voltage
-uint32_t battery_volt_divider = 1000000; //divide voltage by given value to get volt
+int32_t battery_rsoc = -1, battery_rsoc_last = -2; //current battery percentage
 
 //gpio, order:lowbatt, osd, tiny osd
 bool gpio_external = false; //use external program to read gpio state
 bool gpio_enabled[gpio_pins_count] = {0}; //use gpio triggers, leave as is, defined during runtime
 int *gpio_pin[gpio_pins_count] = {&lowbat_gpio, &osd_gpio, &osd_header_gpio}; //gpio pins, leave as is, defined during runtime
 bool *gpio_reversed[gpio_pins_count] = {&lowbat_gpio_reversed, &osd_gpio_reversed, &osd_header_gpio_reversed}; //gpio signal reversed, leave as is, defined during runtime
-double gpio_check_start_time = -1.;
+
+//bitmap buffers
+void *osd_buffer_ptr = NULL; //bitmap buffer pointer
+void *osd_header_buffer_ptr = NULL; //bitmap buffer pointer
+void *lowbat_buffer_ptr = NULL; //bitmap buffer pointer
+void *cputemp_buffer_ptr = NULL; //bitmap buffer pointer
 
 //dispmanx
 #ifndef ALIGN_TO_16
@@ -152,4 +108,3 @@ double gpio_check_start_time = -1.;
 DISPMANX_DISPLAY_HANDLE_T dispmanx_display = 0; //display handle
 VC_DISPMANX_ALPHA_T dispmanx_alpha_from_src = {DISPMANX_FLAGS_ALPHA_FROM_SOURCE, 255, 0};
 uint32_t vc_image_ptr; //only here because of how dispmanx works, not used
-

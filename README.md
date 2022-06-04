@@ -80,20 +80,23 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-h`` or ``-help`` : Show arguments list.  
     * ``-debug <1-0>`` : Enable/disable stderr debug outputs.  
     <br>
-
+  
+  - Warning icons :  
+    * ``-icons_pos <tl/tr/bl/br>`` : icons position on screen : Top Left,Right, Bottom Left,Right.  
+    * ``-icons_height <1-100>`` : icons height in percent (relative to screen height).  
+    * ``-lowbat_test`` : Test mode, Low battery icon will be displayed until program closes (for test purpose).  
+    * ``-cputemp_test`` : Test mode, CPU temperature warning icon will be displayed until program closes (for test purpose).  
+    <br>
+  
   - Low battery management :  
     * ``-battery_rsoc <PATH>`` (\*\*)(\*\*\*) : Path to file containing current remaining percentage of battery.  
       Default: ``/sys/class/power_supply/battery/capacity``  
     * ``-battery_voltage <PATH>`` (\*\*)(\*\*\*) : Path to file containing current battery voltage (program can parse file with float/double format).  
       Default: ``/sys/class/power_supply/battery/voltage_now``  
     * ``-battery_volt_divider <NUM>`` : Divider to get actual voltage (1000 for millivolts as input).  
-    * ``-lowbat_pos <tl/tr/bl/br>`` : Low battery icon position : Top Left,Right, Bottom Left,Right.  
-    * ``-lowbat_width <1-100>`` : Low battery icon width in percent (relative to screen width).  
     * ``-lowbat_limit <0-90>`` : Threshold to trigger low battery icon in percent (require valid ``-battery_rsoc`` argument path).  
-    * ``-lowbat_blink <0.1-10>`` : Low battery icon visible/hide interval in seconds.  
     * ``-lowbat_gpio <GPIO_PIN>`` (\*) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
     * ``-lowbat_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
-    * ``-lowbat_test`` : Test mode, Low battery icon will be displayed until program closes (for test purpose).  
     <br>
 
   - OSD display :  
@@ -168,8 +171,13 @@ If you can't directly send a signal to the program, a file can be used as altern
   Wifi RX bitrate and signal strength (Require ``iw`` program) (F/H).  
 <br>
 
+### Warning icons :
+todo
+priority : low battery, cpu temp
+
+
 ### Low battery icon (when triggered):
-If no valid battery RSOC file provided (``-battery_rsoc <PATH>``), embeded icon will blink at defined interval (``-lowbat_blink <0.1-10>``).  
+If no valid battery RSOC file provided (``-battery_rsoc <PATH>``), static icon will be displayed.  
 Else, icon will be updated on-the-fly with last detected RSOC value.  
 **Note:** If for whatever reason, RSOC file fails to read (but was before), displayed icon (blinking) will keep last updated information.  
 
@@ -193,6 +201,11 @@ Else, icon will be updated on-the-fly with last detected RSOC value.
   - Critical color is based on ``-crit_color <RGB,RGBA>`` argument.
 <br><br>
   
+
+
+
+
+
 ## Repository files
 - **res/** : Contain resources linked to the program like icons and other.
 - **font.h** : Bitmap font from Raspidmx project.
