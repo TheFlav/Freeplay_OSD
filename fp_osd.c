@@ -52,7 +52,7 @@ void charset_export_png(void){ //charset to png export, limited from char 0 to 2
 
     uint32_t txt_col = 0xff000000, grid_col = 0xffff0000;
     for (int cset=0; cset<charset_count; cset++){
-        uint32_t tmp_width = RASPIDMX_FONT_WIDTH * 8 + 3, tmp_height = char_limit[cset] * (RASPIDMX_FONT_HEIGHT + 1);
+        uint32_t tmp_width = RASPIDMX_FONT_WIDTH * 8 + 3, tmp_height = char_limit[cset] * (RASPIDMX_FONT_HEIGHT + 1) + 1;
         void *buffer_ptr = calloc(1, tmp_width * tmp_height * 4);
         if (buffer_ptr != NULL){
             buffer_fill(buffer_ptr, tmp_width, tmp_height, 0xffffffff);
