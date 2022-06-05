@@ -41,47 +41,46 @@ static double get_time_double(void){ //get time in double (seconds), takes aroun
     #define print_stdout(fmt, ...) do {fprintf(stdout, "%lf: %s:%d: %s(): " fmt, get_time_double() - program_start_time , __FILE__, __LINE__, __func__, ##__VA_ARGS__);} while (0) //Flavor: print advanced debug to stderr
 #endif
 
+
 //debug
 #ifdef CHARSET_EXPORT
+void charset_export_png(void){ //charset to png export, limited from char 0 to 255
+    #define charset_count 2
+    uint32_t char_limit[charset_count] = {256, osd_icon_char_count};
+    uint8_t* font_ptr[charset_count] = {raspidmx_font_ptr, osd_icon_font_ptr};
+    char* filename[charset_count] = {charset_raspidmx_path, charset_icons_path};
 
+    uint32_t txt_col = 0xff000000, grid_col = 0xffff0000;
+    for (int cset=0; cset<charset_count; cset++){
+        uint32_t tmp_width = RASPIDMX_FONT_WIDTH * 8 + 3, tmp_height = char_limit[cset] * (RASPIDMX_FONT_HEIGHT + 1);
+        void *buffer_ptr = calloc(1, tmp_width * tmp_height * 4);
+        if (buffer_ptr != NULL){
+            buffer_fill(buffer_ptr, tmp_width, tmp_height, 0xffffffff);
+            buffer_horizontal_line(buffer_ptr, tmp_width, tmp_height, 0, tmp_width, 0, grid_col);
+            uint32_t tmp_x = 0, tmp_y = 1;
+            for (int chr=0; chr<256; chr++){
+                char buffer[5];
+                tmp_x = 0; sprintf(buffer, "%3d", chr);
+                raspidmx_drawStringRGBA32(buffer_ptr, tmp_width, tmp_height, tmp_x, tmp_y, buffer, raspidmx_font_ptr, txt_col, NULL);
 
+                tmp_x += RASPIDMX_FONT_WIDTH * 3 + 1; sprintf(buffer, "0x%02X", chr);
+                raspidmx_drawStringRGBA32(buffer_ptr, tmp_width, tmp_height, tmp_x, tmp_y, buffer, raspidmx_font_ptr, txt_col, NULL);
 
+                tmp_x += RASPIDMX_FONT_WIDTH * 4 + 1; sprintf(buffer, "%c", chr);
+                raspidmx_drawStringRGBA32(buffer_ptr, tmp_width, tmp_height, tmp_x, tmp_y, buffer, font_ptr[cset], txt_col, NULL);
 
+                tmp_y += RASPIDMX_FONT_HEIGHT + 1;
+                buffer_horizontal_line(buffer_ptr, tmp_width, tmp_height, 0, tmp_width, tmp_y - 1, grid_col);
+            }
 
+            tmp_x = RASPIDMX_FONT_WIDTH * 3; buffer_vertical_line(buffer_ptr, tmp_width, tmp_height, tmp_x++, 0, tmp_height, grid_col);
+            tmp_x += RASPIDMX_FONT_WIDTH * 4; buffer_vertical_line(buffer_ptr, tmp_width, tmp_height, tmp_x++, 0, tmp_height, grid_col);
+            tmp_x += RASPIDMX_FONT_WIDTH; buffer_vertical_line(buffer_ptr, tmp_width, tmp_height, tmp_x, 0, tmp_height, grid_col);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void charset_export_png(void){ //charset to png export, based on https://github.com/AndrewFromMelbourne/raspidmx/blob/master/common/savepng.c
+            buffer_png_export(buffer_ptr, tmp_width, tmp_height, filename[cset]);
+            free(buffer_ptr);
+        }
+    }
 }
 #endif
 
@@ -202,6 +201,12 @@ static void buffer_horizontal_line(void* buffer, uint32_t width, uint32_t height
     uint32_t *ptr = (uint32_t *)buffer;
     uint32_t ptr_y_shift = y * width;
     for (int32_t lx = (x1<0)?0:x1; lx <= ((x2>width-1)?width-1:x2); lx++){*(ptr + ptr_y_shift + (uint32_t)lx) = rgba_color;}
+}
+
+static void buffer_vertical_line(void* buffer, uint32_t width, uint32_t height, int32_t x, int32_t y1, int32_t y2, uint32_t rgba_color){ //draw vertical line
+    if (buffer == NULL || x < 0 || x > width-1){return;}
+    uint32_t *ptr = (uint32_t *)buffer;
+    for (int32_t ly = (y1<0)?0:y1; ly <= ((y2>height-1)?height-1:y2); ly++){*(ptr + ly * width + x) = rgba_color;}
 }
 
 static uint32_t buffer_getcolor_rgba(void* buffer, uint32_t width, uint32_t height, int32_t x, int32_t y){ //get specific color from buffer

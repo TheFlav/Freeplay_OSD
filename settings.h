@@ -59,7 +59,6 @@ char backlight_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight"; //absolu
 char backlight_max_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight_max"; //absolute path to max backlight file
 
 //debug
-#define CHARSET_EXPORT 1
 #ifdef CHARSET_EXPORT
     char* charset_raspidmx_path = "res/charset_raspidmx.png"; //relative path to exported Raspidmx character set
     char* charset_icons_path = "res/charset_icons.png"; //relative path to exported icons character set

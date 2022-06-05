@@ -49,6 +49,7 @@ static VC_RECT_T raspidmx_drawStringRGBA32(void* /*buffer*/, int /*buffer_width*
 static void buffer_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, uint32_t /*rgba_color*/); //fill buffer with given color
 static void buffer_rectangle_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/, int32_t /*w*/, int32_t /*h*/, uint32_t /*rgba_color*/); //fill rectangle with given color
 static void buffer_horizontal_line(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x1*/, int32_t /*x2*/, int32_t /*y*/, uint32_t /*rgba_color*/); //draw horizontal line
+static void buffer_vertical_line(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y1*/, int32_t /*y2*/, uint32_t /*rgba_color*/); //draw vertical line
 static uint32_t buffer_getcolor_rgba(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/); //get specific color from buffer
 static bool buffer_png_export(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, const char* /*filename*/); //export buffer to png, modified version of savePng() from Raspidmx
 

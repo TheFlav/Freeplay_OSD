@@ -4826,7 +4826,7 @@ uint8_t osd_icon_font[osd_icon_char_count][RASPIDMX_FONT_HEIGHT] = { //custom se
         0b11111111,
         0b11111111,
     },
-    { //char XX : none
+    { //char 10 : none
         0b00000000,
         0b00000000,
         0b00000000,
