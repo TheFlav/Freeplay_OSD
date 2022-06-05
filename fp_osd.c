@@ -20,7 +20,7 @@ Note on wiringpi: You may need to clone and compile for unofficial github reposi
 
 Credits goes where its due:
 - This project is inspirated by Retropie-open-OSD (https://github.com/vascofazza/Retropie-open-OSD).
-- Contain modified version of drawStringRGB(), drawCharRGB(), setPixelRGB(), loadPng() functions and fontset from Raspidmx (https://github.com/AndrewFromMelbourne/raspidmx).
+- Contain modified version of drawStringRGB(), drawCharRGB(), setPixelRGB(), loadPng(), savePng() functions and font charset from Raspidmx (https://github.com/AndrewFromMelbourne/raspidmx).
 */
 
 #include "fp_osd.h"
@@ -39,6 +39,50 @@ static double get_time_double(void){ //get time in double (seconds), takes aroun
 
 #ifndef print_stdout
     #define print_stdout(fmt, ...) do {fprintf(stdout, "%lf: %s:%d: %s(): " fmt, get_time_double() - program_start_time , __FILE__, __LINE__, __func__, ##__VA_ARGS__);} while (0) //Flavor: print advanced debug to stderr
+#endif
+
+//debug
+#ifdef CHARSET_EXPORT
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void charset_export_png(void){ //charset to png export, based on https://github.com/AndrewFromMelbourne/raspidmx/blob/master/common/savepng.c
+}
 #endif
 
 
@@ -94,10 +138,11 @@ static VC_RECT_T raspidmx_drawStringRGBA32(void* buffer, int buffer_width, int b
             if (text_bitmap_ptr != NULL){free(text_bitmap_ptr);}
             if (text_out_bitmap_ptr != NULL){free(text_out_bitmap_ptr);}
         } else {
-            int32_t text_x = 0/*1*/, text_y = 0/*1*/;
+            x_back -= 1; y_back -= 1; //offset for outline
+            int32_t text_x = 1, text_y = 1;
             str = str_back;
             while (*str != '\0'){ //build text and outline bitmap
-                if (*str == '\n'){text_x = 0/*1*/; text_y += RASPIDMX_FONT_HEIGHT;
+                if (*str == '\n'){text_x = 1; text_y += RASPIDMX_FONT_HEIGHT;
                 } else if (text_x < text_width-1){
                     for (int char_y = 0; char_y < RASPIDMX_FONT_HEIGHT; char_y++){ //char bitmap
                         uint8_t byte = *(font_ptr + *str * RASPIDMX_FONT_HEIGHT + char_y);
@@ -136,7 +181,6 @@ static VC_RECT_T raspidmx_drawStringRGBA32(void* buffer, int buffer_width, int b
     return (VC_RECT_T){.x = x_end, .y = y, .width = text_width_return, .height = text_height_return};
 }
 
-
 //dispmanx specific
 static void buffer_fill(void* buffer, uint32_t width, uint32_t height, uint32_t rgba_color){ //fill buffer with given color
     if (buffer == NULL){return;}
@@ -167,19 +211,48 @@ static uint32_t buffer_getcolor_rgba(void* buffer, uint32_t width, uint32_t heig
     return color;
 }
 
+static bool buffer_png_export(void* buffer, uint32_t width, uint32_t height, const char* filename){ //export buffer to png, modified version of savePng() from Raspidmx
+    //WARNING: function doesn't check in any way for buffer size, buffer is supposed to be 4 bytes per pixel, following RGBA dispmanx pixel format (revert).
+    if (filename == NULL || filename[0]=='\0'){print_stderr("invalid filename.\n"); return false;}
+    if (width == 0 || height == 0){print_stderr("invalid resolution: %dx%d.\n", width, height); return false;}
+
+    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //allocate and initialize a png_struct write structure
+    if (png_ptr == NULL){print_stderr("failed to init png_struct write structure.\n"); return false;}
+
+    png_infop info_ptr = png_create_info_struct(png_ptr); //allocate and initialize a png_info structure
+    if (info_ptr == NULL){print_stderr("failed to init png_info structure.\n"); png_destroy_write_struct(&png_ptr, 0); return false;}
+    if (setjmp(png_jmpbuf(png_ptr))){print_stderr("setjmp png_jmpbuf failed.\n"); png_destroy_write_struct(&png_ptr, &info_ptr); return false;}
+
+    FILE *filehandle = fopen(filename, "wb");
+    if (filehandle == NULL){print_stderr("failed to open file handle for '%s'.\n", filename); png_destroy_write_struct(&png_ptr, &info_ptr); return false;}
+
+    png_init_io(png_ptr, filehandle); //initialize input/output for the PNG file
+    png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+    png_write_info(png_ptr, info_ptr);
+
+    uint32_t pitch = width * 4;
+    for (uint32_t y = 0; y < height; y++){png_write_row(png_ptr, buffer + (pitch * y));}
+
+    png_write_end(png_ptr, NULL); //write end of PNG file
+    png_destroy_write_struct(&png_ptr, &info_ptr); //free structures memory
+    fclose(filehandle);
+    print_stderr("data wrote to '%s'.\n", filename);
+    return true;
+}
+
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filename, VC_RECT_T* image_rect_ptr){ //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
-	FILE* filehandle = fopen(filename, "rb");
-	if (filehandle == NULL){print_stderr("failed to read '%s'.\n", filename); return 0;} else {print_stderr("'%s' opened.\n", filename);}
+    FILE* filehandle = fopen(filename, "rb");
+    if (filehandle == NULL){print_stderr("failed to read '%s'.\n", filename); return 0;} else {print_stderr("'%s' opened.\n", filename);}
 
-	png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //allocate and initialize a png_struct structure
-    if (png_ptr == NULL){print_stderr("failed to init png_struct structure.\n"); fclose(filehandle); return 0;}
+    png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //allocate and initialize a png_struct structure
+    if (png_ptr == NULL){print_stderr("failed to init png_struct read structure.\n"); fclose(filehandle); return 0;}
 
-	png_infop info_ptr = png_create_info_struct(png_ptr); //allocate and initialize a png_info structure
-	if (info_ptr == NULL){print_stderr("failed to init png_info structure (invalid png file?).\n"); png_destroy_read_struct(&png_ptr, 0, 0); fclose(filehandle); return 0;}
-	if (setjmp(png_jmpbuf(png_ptr))){print_stderr("setjmp png_jmpbuf failed.\n"); png_destroy_read_struct(&png_ptr, &info_ptr, 0); fclose(filehandle); return 0;}
+    png_infop info_ptr = png_create_info_struct(png_ptr); //allocate and initialize a png_info structure
+    if (info_ptr == NULL){print_stderr("failed to init png_info structure.\n"); png_destroy_read_struct(&png_ptr, 0, 0); fclose(filehandle); return 0;}
+    if (setjmp(png_jmpbuf(png_ptr))){print_stderr("setjmp png_jmpbuf failed.\n"); png_destroy_read_struct(&png_ptr, &info_ptr, 0); fclose(filehandle); return 0;}
 
-	png_init_io(png_ptr, filehandle); //initialize input/output for the PNG file
-	png_read_info(png_ptr, info_ptr); //read the PNG image information
+    png_init_io(png_ptr, filehandle); //initialize input/output for the PNG file
+    png_read_info(png_ptr, info_ptr); //read the PNG image information
 
     int width = png_get_image_width(png_ptr, info_ptr), height = png_get_image_height(png_ptr, info_ptr); //dimensions
     if (width == 0 || height == 0){print_stderr("failed to get image size.\n"); png_destroy_read_struct(&png_ptr, &info_ptr, 0); fclose(filehandle); return 0;}
@@ -187,7 +260,7 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     png_byte color_type = png_get_color_type(png_ptr, info_ptr), bit_depth = png_get_bit_depth(png_ptr, info_ptr); //color type and depth
     print_stderr("resolution: %dx%d depth:%dbits.\n", width, height, bit_depth*png_get_channels(png_ptr, info_ptr));
 
-	double gamma = .0; if (png_get_gAMA(png_ptr, info_ptr, &gamma)){png_set_gamma(png_ptr, 2.2, gamma);} //gamma correction, useful?
+    double gamma = .0; if (png_get_gAMA(png_ptr, info_ptr, &gamma)){png_set_gamma(png_ptr, 2.2, gamma);} //gamma correction, useful?
 
     //convert to rgba
     if (color_type == PNG_COLOR_TYPE_PALETTE){png_set_palette_to_rgb(png_ptr); //convert palette to rgb
@@ -198,7 +271,7 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)){png_set_tRNS_to_alpha(png_ptr);} //convert tRNS chunks to alpha channels
     if (bit_depth == 16){png_set_scale_16(png_ptr);} //scale down 16bits to 8bits depth
     if (!(color_type & PNG_COLOR_MASK_ALPHA)){png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER); print_stderr("dummy alpha channel added.\n");} //no alpha channel, add one
-	png_read_update_info(png_ptr, info_ptr); //update png info structure
+    png_read_update_info(png_ptr, info_ptr); //update png info structure
     color_type = png_get_color_type(png_ptr, info_ptr);
 
     //read image into memory
@@ -228,6 +301,7 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     print_stderr("dispmanx resource created, handle:%u.\n", resource);
     return resource;
 }
+
 
 //gpio functions
 static void gpio_init(void){ //init gpio things
@@ -494,6 +568,8 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
             //line between left and right separator
             buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, text_column_left - RASPIDMX_FONT_WIDTH/2, text_column_right + RASPIDMX_FONT_WIDTH/2, osd_height/2 - 1, osd_color_separator); 
 
+            if (debug_buffer_png_export){buffer_png_export(osd_header_buffer_ptr, osd_width, osd_height, "debug_export/tiny_osd.png");} //debug png export
+
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_header_buffer_ptr, &osd_rect) != 0){
                 print_stderr("failed to write dispmanx resource.\n");
@@ -756,6 +832,8 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
 
             //raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\n", raspidmx_font_ptr, osd_color_text, &osd_color_text_bg);
 
+            if (debug_buffer_png_export){buffer_png_export(osd_buffer_ptr, osd_width, osd_height, "debug_export/full_osd.png");} //debug png export
+
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_buffer_ptr, &osd_rect) != 0){
                 print_stderr("failed to write dispmanx resource.\n");
@@ -799,7 +877,9 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
             buffer_rectangle_fill(lowbat_buffer_ptr, icon_width_16, icon_height_16, 4, 6, 35*battery_rsoc/100, 15, tmp_color_bar); //bars
 
             char buffer[16]; sprintf(buffer, "%3d%%", battery_rsoc);
-            raspidmx_drawStringRGBA32(lowbat_buffer_ptr, icon_width_16, icon_height_16, 6, 7, buffer, raspidmx_font_ptr, tmp_color, &lowbat_icon_bar_bg_color);
+            raspidmx_drawStringRGBA32(lowbat_buffer_ptr, icon_width_16, icon_height_16, 6, 6, buffer, raspidmx_font_ptr, tmp_color, &lowbat_icon_bar_bg_color);
+
+            if (debug_buffer_png_export){buffer_png_export(lowbat_buffer_ptr, icon_width_16, icon_height_16, "debug_export/lowbatt_icon.png");} //debug png export
 
             VC_RECT_T icon_rect; vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width, icon_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, icon_width_16 * 4, lowbat_buffer_ptr, &icon_rect) != 0){
@@ -836,13 +916,16 @@ void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
     if (cputemp_buffer_ptr != NULL){ //valid bitmap buffer
         static uint32_t y_back = UINT32_MAX;
         if (cputemp_curr != cputemp_last || *element == 0 || y_back != y){ //redraw
-            uint32_t tmp_color = osd_color_text;
+            
+            uint32_t tmp_color = 0xFF000000;
             if (cputemp_curr >= cputemp_crit){tmp_color = osd_color_crit;} else if (cputemp_curr >= cputemp_warn){tmp_color = osd_color_warn;}
 
-            buffer_rectangle_fill(cputemp_buffer_ptr, icon_width_16, icon_height_16, 2, 6, 32, 15, cputemp_icon_bg_color); //reset bars background
+            buffer_rectangle_fill(cputemp_buffer_ptr, icon_width_16, icon_height_16, 3, 7, 32, 15, cputemp_icon_bg_color); //reset text background
 
             char buffer[16]; sprintf(buffer, "%3dC", cputemp_curr);
             raspidmx_drawStringRGBA32(cputemp_buffer_ptr, icon_width_16, icon_height_16, 3, 7, buffer, raspidmx_font_ptr, tmp_color, NULL);
+
+            if (debug_buffer_png_export){buffer_png_export(cputemp_buffer_ptr, icon_width_16, icon_height_16, "debug_export/cputemp_icon.png");} //debug png export
 
             VC_RECT_T icon_rect; vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width, icon_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, icon_width_16 * 4, cputemp_buffer_ptr, &icon_rect) != 0){
@@ -1002,7 +1085,8 @@ static void program_usage(void){ //display help
     fprintf(stderr,
     "\nProgram:\n"
     "\t-debug <0-1> (enable stderr debug output. Default:%d).\n"
-    , debug?1:0);
+    "\t-buffer_png_export (export all drawn buffers to png files into debug_export folder. Default:%s).\n"
+    , debug?1:0, debug_buffer_png_export?"on":"off");
 }
 
 int main(int argc, char *argv[]){
@@ -1073,9 +1157,15 @@ int main(int argc, char *argv[]){
 
         //Program
         } else if (strcmp(argv[i], "-debug") == 0){debug = atoi(argv[++i]) > 0;
+        } else if (strcmp(argv[i], "-buffer_png_export") == 0){debug_buffer_png_export = true;
         }
     }
     
+    //charset to png export
+    #ifdef CHARSET_EXPORT
+        charset_export_png();
+    #endif
+
     //pid file
     int pid = (int)getpid();
     if (pid > 0){
@@ -1177,7 +1267,7 @@ int main(int argc, char *argv[]){
     } else {print_stderr("cpu temperature warning icon disabled\n");}
     icon_index++;
 
-	//osd
+    //osd
     double osd_scaling = (double)display_height / (osd_text_padding * 2 + osd_max_lines * RASPIDMX_FONT_HEIGHT);
     int osd_width = ALIGN_TO_16((int)(display_width / osd_scaling)), osd_height = ALIGN_TO_16((int)(display_height / osd_scaling));
     print_stderr("osd resolution: %dx%d (%.4lfx)\n", osd_width, osd_height, (double)osd_width/display_width);
@@ -1198,8 +1288,8 @@ int main(int argc, char *argv[]){
     print_stderr("starting main loop\n");
 
     double gpio_check_start_time = -1., sec_check_start_time = -1.; //gpio, seconds interval check start time
-    bool lowbat_trigger = lowbat_test, lowbat_displayed = false; //low battery icon displayed
-    bool cputemp_trigger = cputemp_test, cputemp_displayed = false; //cpu temp icon displayed
+    bool lowbat_trigger = false, lowbat_displayed = false; //low battery icon displayed
+    bool cputemp_trigger = false, cputemp_displayed = false; //cpu temp icon displayed
     bool signal_file_used = false; //signal read from a file
     bool icon_update = false; //warning icon update trigger
 
@@ -1243,7 +1333,7 @@ int main(int argc, char *argv[]){
                 if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element); osd_header_element = 0;}
                 if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                 osd_header_start_time = -1.;
-            } else if (osd_start_time < 0){ //only if full osd not displayed
+            } else if (osd_start_time < 0 || osd_header_test){ //only if full osd not displayed
                 osd_header_build_element(osd_header_resource, &osd_header_element, dispmanx_update, osd_header_width, osd_header_height, 0, osd_header_y, display_width, osd_header_height_dest);
             }
         }
@@ -1314,5 +1404,5 @@ int main(int argc, char *argv[]){
         for (int i=0; i<gpio_pins_count; i++){if (gpiod_input_line[i] != NULL){gpiod_line_release(gpiod_input_line[i]);}}
     #endif
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }

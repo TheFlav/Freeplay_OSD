@@ -4644,7 +4644,8 @@ uint8_t raspidmx_font[256][RASPIDMX_FONT_HEIGHT] = {
 
 uint8_t* raspidmx_font_ptr = (uint8_t*)raspidmx_font;
 
-uint8_t osd_icon_font[10][RASPIDMX_FONT_HEIGHT] = { //custom set of icons
+#define osd_icon_char_count 11
+uint8_t osd_icon_font[osd_icon_char_count][RASPIDMX_FONT_HEIGHT] = { //custom set of icons
     { //char 0 : none
         0b00000000,
         0b00000000,
@@ -4806,6 +4807,24 @@ uint8_t osd_icon_font[10][RASPIDMX_FONT_HEIGHT] = { //custom set of icons
         0b00000000,
         0b00000000,
         0b00000000,
+    },
+    { //char 9 : filled
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
     },
     { //char XX : none
         0b00000000,

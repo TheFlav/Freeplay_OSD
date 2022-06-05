@@ -50,6 +50,7 @@ static void buffer_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*
 static void buffer_rectangle_fill(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/, int32_t /*w*/, int32_t /*h*/, uint32_t /*rgba_color*/); //fill rectangle with given color
 static void buffer_horizontal_line(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x1*/, int32_t /*x2*/, int32_t /*y*/, uint32_t /*rgba_color*/); //draw horizontal line
 static uint32_t buffer_getcolor_rgba(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, int32_t /*x*/, int32_t /*y*/); //get specific color from buffer
+static bool buffer_png_export(void* /*buffer*/, uint32_t /*width*/, uint32_t /*height*/, const char* /*filename*/); //export buffer to png, modified version of savePng() from Raspidmx
 
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* /*filename*/, VC_RECT_T* /*image_rect_ptr*/); //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
 
@@ -75,6 +76,9 @@ const char dev_webpage[] = "https://github.com/TheFlav/Freeplay_OSD"; //dev webs
 bool debug = true, kill_requested = false, already_killed = false;
 char program_path[PATH_MAX] = {'\0'}, program_name[PATH_MAX] = {'\0'}; //full path to this program
 char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
+
+//debug
+bool debug_buffer_png_export = false; //export rgba buffers to png files, leave as is, use -buffer_png_export argument instead
 
 //start time
 double program_start_time = .0; //used for print output

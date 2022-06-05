@@ -39,7 +39,7 @@ Credits goes where its due:
 ### Preprocessor variables (gcc -D) to enable features:
 - GPIO library support:
   - Only one kind of library will be allowed at once.
-  - You can also disable gpio with program argument ``-lowbat_gpio -1``, ``-osd_gpio -1``, ``-osd_header_gpio -1`` or setting [fp_osd.h](fp_osd.h) 'lowbat_gpio', 'osd_gpio', 'osd_header_gpio' variables to -1.
+  - You can also disable gpio with program argument ``-lowbat_gpio -1``, ``-osd_gpio -1``, ``-osd_header_gpio -1`` or set [settings.h](settings.h) 'lowbat_gpio', 'osd_gpio', 'osd_header_gpio' variables to -1.
   - Program will fall back on ``raspi-gpio`` program if library fails and at least one GPIO pin not disabled (user will have to set pins to input mode on there own in this case).  
 
   - ``USE_WIRINGPI``
@@ -54,8 +54,8 @@ Credits goes where its due:
     * **Important note**: Will fail if one GPIO pin already used by another program.  
   <br>
 
-- Debug:
-  - ``CHARSET_EXPORT``: Export current character set defined in [font.h](font.h) to **res/raspidmx_charset.png** and **res/icons_charset.png** when program starts, should only be used during development.  
+- Debug specific:
+  - ``CHARSET_EXPORT``: Export current characters set defined in [font.h](font.h) to [res/charset_raspidmx.png](res/charset_raspidmx.png) and [res/charset_icons.png](res/charset_icons.png) when program starts, should only be used during development.  
   <br>
 
 ### Examples:
@@ -86,6 +86,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
   - Common :
     * ``-h`` or ``-help`` : Show arguments list.  
     * ``-debug <1-0>`` : Enable/disable stderr debug outputs.  
+    * ``-buffer_png_export`` : Export all drawn buffers to PNG files into **debug_export** folder.  
     <br>
   
   - Warning icons :  
@@ -186,7 +187,7 @@ Priority:
   2) CPU temperature  
   
 **Important note**: Since the program uses bitmap font for text display, icons (before program scales them) needs to account for characters of 8x16 pixels.  
-Current program character set: [raspidmx_charset.png](res/raspidmx_charset.png).  
+Current program character set: [charset_raspidmx.png](res/charset_raspidmx.png).  
 <br>
 
 ### Low battery icon:
@@ -227,18 +228,18 @@ If file is invalid, icon will never be displayed.
 
 - Colors (updated at runtime):
   - Background color is picked at 30,13.
-  - Normal color is based on ``-text_color <RGB,RGBA>`` argument.
+  - Normal color will default to pitch black (no opacity).
   - Warning color is based on ``-warn_color <RGB,RGBA>`` argument.
   - Critical color is based on ``-crit_color <RGB,RGBA>`` argument.
 <br><br>
 
 ## Repository files
-- **res/** : Contain resources linked to the program like icons and other.
-- **font.h** : Bitmap font from Raspidmx project.
-- **fp_osd.h**/**fp_osd.c** : OSD program.
-- **settings.h** : User settings, mostly settable with program arguments.
-- **compile.sh** : Sample script to compile program.
-- **osd.sh**/**osdbar.sh** : Sample script to send signal to OSD program.
+- [res/](res/) : Contain resources linked to the program like icons and other.
+- [font.h](font.h) : Bitmap font from Raspidmx project.
+- [fp_osd.h](fp_osd.h)/[fp_osd.c](fp_osd.c) : OSD program.
+- [settings.h](settings.h) : User settings, mostly settable with program arguments.
+- [compile.sh](compile.sh) : Sample script to compile program.
+- [osd.sh](osd.sh)/[osdbar.sh](osdbar.sh) : Sample script to send signal to OSD program.
 <br><br>
   
 ## Missing features
