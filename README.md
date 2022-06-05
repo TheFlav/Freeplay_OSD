@@ -111,7 +111,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-display`` : Dispmanx display (0 for main screen).  
     * ``-layer`` : Dispmanx layer (10000 by default to ensure it goes over everything else).  
     * ``-timeout <1-20>`` : Hide OSD after given duration.  
-    * ``-check <1-120>`` : Signal/GPIO check interval in hz.  
+    * ``-check <1-120>`` : Main loop limits in hz, limited impact on performance.  
     * ``-signal_file <PATH>`` (\*\*\*) : Path to signal file, useful if you can't send signal to program.  
       Should only contain '0', SIGUSR1 or SIGUSR2 value.  
     * ``-osd_gpio <GPIO_PIN>`` (\*) : OSD display trigger GPIO pin, set to -1 to disable.  
@@ -147,12 +147,16 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 <br>
 
 ### OSD informations:
-**Notes:** May change without notice, Displayed elements depends on current hardware setup.  
-Send ``SIGUSR1`` signal to program to display full OSD, ``SIGUSR2`` for Tiny OSD.  
-If you can't directly send a signal to the program, a file can be used as alternative solution with argument ``-signal_file <PATH>``.  
-Can also be displayed with GPIO, ``-osd_gpio <PIN>`` argument for Full OSD and ``-osd_header_gpio <PIN>`` argument for Tiny OSD.  
+- **Notes:**
+  - May change without notice, Displayed elements depends on current hardware setup.  
+  - Depending on how program is configured, Full and Tiny OSD can be triggered multiple ways:
+    * Signal sent to the program: ``SIGUSR1`` for Full OSD and ``SIGUSR2`` for Tiny OSD.  
+    * File on the system (set with ``-signal_file <PATH>`` argument), contenting numeric value of ``SIGUSR1`` or ``SIGUSR2`` (file content is reset to "0" once triggered).  
+    * GPIO pin set with ``-osd_gpio <PIN>`` argument for Full OSD (``-osd_gpio_reversed <0-1>`` to set LOW or HIGH trigger) and ``-osd_header_gpio <PIN>`` argument for Tiny OSD (``-osd_header_gpio_reversed <0-1>`` to set LOW or HIGH trigger).  
   
-(F/H) : Full OSD and Tiny OSD.  
+
+  
+(**F**): Full OSD, (**H**): Tiny OSD.  
 
 - Time (F/H) :  
   If RTC module installed (and configured) or system time synchronized with NTC service, full time and date will be displayed.  
@@ -178,7 +182,7 @@ Can also be displayed with GPIO, ``-osd_gpio <PIN>`` argument for Full OSD and `
 
 - Network :  
   Interfaces list with assigned IPv4 address.  
-  Wifi RX bitrate and signal strength (Require ``iw`` program) (F/H).  
+  Wifi RX bitrate and signal strength (Require ``iw`` program installed) (F/H).  
 <br>
 
 ## Warning icons:
@@ -187,7 +191,7 @@ Priority:
   2) CPU temperature  
   
 **Important note**: Since the program uses bitmap font for text display, icons (before program scales them) needs to account for characters of 8x16 pixels.  
-Current program character set: [charset_raspidmx.png](res/charset_raspidmx.png).  
+Current program character sets: [charset_raspidmx.png](res/charset_raspidmx.png), [charset_icons.png](res/charset_icons.png).  
 <br>
 
 ### Low battery icon:
@@ -244,7 +248,7 @@ If file is invalid, icon will never be displayed.
   
 ## Missing features
 Section to be considered as a pseudo todo.  
-- Full screen/Tiny OSD rework.
+- Full/Tiny OSD rework.
 <br><br>
 
 ## Known issue(s)
