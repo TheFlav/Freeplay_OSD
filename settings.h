@@ -40,7 +40,7 @@ char* cputemp_img_file = "res/temp_warn.png"; //cpu temp icon filename
 //cpu data
 char cpu_thermal_path[PATH_MAX] = "/sys/class/thermal/thermal_zone0/temp"; //absolute path to cpu temperature file
 uint32_t cpu_thermal_divider = 1000; //divide temp by given value to get celsus
-int cputemp_warn = 75, cputemp_crit = 85; //cpu temp icon display threshold
+int cputemp_warn = 70, cputemp_crit = 80; //cpu temp icon display threshold
 
 //memory data
 #define memory_divider 1024 //divide memory by given value to get mB
