@@ -237,7 +237,43 @@ If file is invalid, icon will never be displayed.
   - Critical color is based on ``-crit_color <RGB,RGBA>`` argument.
 <br><br>
 
+## Service files
+- **Notes:**
+  - Files located in [service_sample/](service_sample/) folder, these are provided as example.
+  - In order to use one of these, you may need to change ``User``, ``Group``.
+  - You may also need to update ``ExecStart`` path.
+  - ``Restart`` is commented here because program is still in developpement, if uncommented, program will restart on its own if closed.
+  - In following examples, Replace ``fp_osd.service`` by service file you want.  
+<br>
+
+- Install a service and run it (fp_osd.service as example here, update path if needed):
+```
+cd /home/pi/Freeplay/Freeplay_OSD/service_sample
+sudo cp fp_osd.service /lib/systemd/system/fp_osd.service
+sudo systemctl enable fp_osd.service
+sudo systemctl start fp_osd.service
+```
+
+- Remove a service:
+```
+sudo systemctl stop fp_osd.service
+sudo systemctl disable fp_osd.service
+sudo rm /lib/systemd/system/fp_osd.service
+```
+
+- Start a service:
+```
+sudo systemctl start fp_osd.service
+```
+
+- Stop a service:
+```
+sudo systemctl stop fp_osd.service
+```
+<br><br>
+
 ## Repository files
+- [service_sample/](service_sample/) : Contain sample service files to run program as daemon.
 - [res/](res/) : Contain resources linked to the program like icons and other.
 - [font.h](font.h) : Bitmap font from Raspidmx project.
 - [fp_osd.h](fp_osd.h)/[fp_osd.c](fp_osd.c) : OSD program.
