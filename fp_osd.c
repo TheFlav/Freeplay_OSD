@@ -573,6 +573,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
             //line between left and right separator
             buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, text_column_left - RASPIDMX_FONT_WIDTH/2, text_column_right + RASPIDMX_FONT_WIDTH/2, osd_height/2 - 1, osd_color_separator); 
 
+            //horizontal break line
+            buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, 0, osd_width, (y == 0)?osd_height-1:0, osd_color_separator); 
+
             if (debug_buffer_png_export){buffer_png_export(osd_header_buffer_ptr, osd_width, osd_height, "debug_export/tiny_osd.png");} //debug png export
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
