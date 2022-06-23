@@ -297,6 +297,7 @@ sudo systemctl stop fp_osd.service
   
 ## Missing features
 Section to be considered as a pseudo todo.  
+- Allow OSD trigger using EVDEV.
 - Full/Tiny OSD rework.
 <br><br>
 
