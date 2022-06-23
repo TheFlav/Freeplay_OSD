@@ -15,7 +15,7 @@ Important notes:
 Very early version, still under developpement.
 
 Require libpng-dev, zlib1g-dev, libraspberrypi-dev(?).
-Depending of wanted GPIO support (is so): wiringpi, libgpiod-dev.
+Depending of wanted GPIO support (if so): wiringpi, libgpiod-dev.
 Note on wiringpi: You may need to clone and compile for unofficial github repository as official WiringPi ended development, please refer to: https://github.com/PinkFreud/WiringPi
 
 Credits goes where its due:
@@ -216,6 +216,7 @@ static uint32_t buffer_getcolor_rgba(void* buffer, uint32_t width, uint32_t heig
     return color;
 }
 
+#ifdef BUFFER_PNG_EXPORT
 static bool buffer_png_export(void* buffer, uint32_t width, uint32_t height, const char* filename){ //export buffer to png, modified version of savePng() from Raspidmx
     //WARNING: function doesn't check in any way for buffer size, buffer is supposed to be 4 bytes per pixel, following RGBA dispmanx pixel format (revert).
     if (filename == NULL || filename[0]=='\0'){print_stderr("invalid filename.\n"); return false;}
@@ -244,6 +245,7 @@ static bool buffer_png_export(void* buffer, uint32_t width, uint32_t height, con
     print_stderr("data wrote to '%s'.\n", filename);
     return true;
 }
+#endif
 
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filename, VC_RECT_T* image_rect_ptr){ //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
     FILE* filehandle = fopen(filename, "rb");
@@ -309,6 +311,7 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
 
 
 //gpio functions
+#ifndef NO_GPIO
 static void gpio_init(void){ //init gpio things
     bool gpio_lib_failed = false;
 
@@ -381,6 +384,7 @@ static bool gpio_check(int index){ //check if gpio pin state
     }
     return ret;
 }
+#endif
 
 //low battery specific
 static bool lowbat_sysfs(void){ //read sysfs power_supply battery capacity, return true if threshold, false if under or file not found
@@ -409,6 +413,7 @@ static bool cputemp_sysfs(void){ //read sysfs cpu temperature, return true if th
 
 
 //osd related
+#ifndef NO_TINYOSD
 void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     if (osd_header_buffer_ptr == NULL){
         print_stderr("creating header osd bitmap buffer.\n");
@@ -576,7 +581,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
             //horizontal break line
             buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, 0, osd_width, (y == 0)?osd_height-1:0, osd_color_separator); 
 
-            if (debug_buffer_png_export){buffer_png_export(osd_header_buffer_ptr, osd_width, osd_height, "debug_export/tiny_osd.png");} //debug png export
+            #ifdef BUFFER_PNG_EXPORT
+                if (debug_buffer_png_export){buffer_png_export(osd_header_buffer_ptr, osd_width, osd_height, "debug_export/tiny_osd.png");} //debug png export
+            #endif
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_header_buffer_ptr, &osd_rect) != 0){
@@ -595,7 +602,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
         }
     } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
+#endif
 
+#ifndef NO_OSD
 void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     if (osd_buffer_ptr == NULL){
         print_stderr("creating osd bitmap buffer.\n");
@@ -840,7 +849,9 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
 
             //raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\nabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\n", raspidmx_font_ptr, osd_color_text, &osd_color_text_bg);
 
-            if (debug_buffer_png_export){buffer_png_export(osd_buffer_ptr, osd_width, osd_height, "debug_export/full_osd.png");} //debug png export
+            #ifdef BUFFER_PNG_EXPORT
+                if (debug_buffer_png_export){buffer_png_export(osd_buffer_ptr, osd_width, osd_height, "debug_export/full_osd.png");} //debug png export
+            #endif
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_buffer_ptr, &osd_rect) != 0){
@@ -859,7 +870,9 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
         }
     } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
+#endif
 
+#ifndef NO_BATTERY_ICON
 void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     uint32_t icon_width_16 = ALIGN_TO_16(icon_width), icon_height_16 = ALIGN_TO_16(icon_height);
 
@@ -887,7 +900,9 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
             char buffer[16]; sprintf(buffer, "%3d%%", battery_rsoc);
             raspidmx_drawStringRGBA32(lowbat_buffer_ptr, icon_width_16, icon_height_16, 6, 6, buffer, raspidmx_font_ptr, tmp_color, &lowbat_icon_bar_bg_color);
 
-            if (debug_buffer_png_export){buffer_png_export(lowbat_buffer_ptr, icon_width_16, icon_height_16, "debug_export/lowbatt_icon.png");} //debug png export
+            #ifdef BUFFER_PNG_EXPORT
+                if (debug_buffer_png_export){buffer_png_export(lowbat_buffer_ptr, icon_width_16, icon_height_16, "debug_export/lowbatt_icon.png");} //debug png export
+            #endif
 
             VC_RECT_T icon_rect; vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width, icon_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, icon_width_16 * 4, lowbat_buffer_ptr, &icon_rect) != 0){
@@ -907,7 +922,9 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
         }
     } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
+#endif
 
+#ifndef NO_CPU_ICON
 void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     uint32_t icon_width_16 = ALIGN_TO_16(icon_width), icon_height_16 = ALIGN_TO_16(icon_height);
 
@@ -933,7 +950,9 @@ void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
             char buffer[16]; sprintf(buffer, "%3dC", cputemp_curr);
             raspidmx_drawStringRGBA32(cputemp_buffer_ptr, icon_width_16, icon_height_16, 3, 7, buffer, raspidmx_font_ptr, tmp_color, NULL);
 
-            if (debug_buffer_png_export){buffer_png_export(cputemp_buffer_ptr, icon_width_16, icon_height_16, "debug_export/cputemp_icon.png");} //debug png export
+            #ifdef BUFFER_PNG_EXPORT
+                if (debug_buffer_png_export){buffer_png_export(cputemp_buffer_ptr, icon_width_16, icon_height_16, "debug_export/cputemp_icon.png");} //debug png export
+            #endif
 
             VC_RECT_T icon_rect; vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width, icon_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, icon_width_16 * 4, cputemp_buffer_ptr, &icon_rect) != 0){
@@ -953,7 +972,7 @@ void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
         }
     } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
-
+#endif
 
 //integer manipulation functs
 int int_constrain(int* val, int min, int max){ //limit int value to given (incl) min and max value, return 0 if val within min and max, -1 under min, 1 over max
@@ -990,18 +1009,34 @@ static bool html_to_uint32_color(char* html_color, uint32_t* rgba){ //convert ht
 
 static void tty_signal_handler(int sig){ //handle signal func
     if (debug){print_stderr("DEBUG: signal received: %d.\n", sig);}
-    if (sig == SIGUSR1){osd_start_time = get_time_double(); //full osd start time
-    } else if (sig == SIGUSR2){osd_header_start_time = get_time_double(); //header osd
+    if (sig == SIGUSR1){
+        #if !defined(NO_SIGNAL) && !defined(NO_OSD)
+            osd_start_time = get_time_double(); //full osd start time
+        #endif
+    } else if (sig == SIGUSR2){
+        #if !defined(NO_SIGNAL) && !defined(NO_TINYOSD)
+            osd_header_start_time = get_time_double(); //header osd
+        #endif
     } else {kill_requested = true;}
 }
 
 static void program_close(void){ //regroup all close functs
     if (already_killed){return;}
     if (strlen(pid_path) > 0){remove(pid_path);} //delete pid file
-    if (osd_buffer_ptr != NULL){free(osd_buffer_ptr); osd_buffer_ptr = NULL;} //free osd buffer
-    if (osd_header_buffer_ptr != NULL){free(osd_header_buffer_ptr); osd_header_buffer_ptr = NULL;} //free osd header buffer
-    if (lowbat_buffer_ptr != NULL){free(lowbat_buffer_ptr); lowbat_buffer_ptr = NULL;} //free low batt buffer
-    if (cputemp_buffer_ptr != NULL){free(cputemp_buffer_ptr); cputemp_buffer_ptr = NULL;} //free cpu temp buffer
+
+    #ifndef NO_OSD
+        if (osd_buffer_ptr != NULL){free(osd_buffer_ptr); osd_buffer_ptr = NULL;} //free osd buffer
+    #endif
+    #ifndef NO_TINYOSD
+        if (osd_header_buffer_ptr != NULL){free(osd_header_buffer_ptr); osd_header_buffer_ptr = NULL;} //free osd header buffer
+    #endif
+    #ifndef NO_BATTERY_ICON
+        if (lowbat_buffer_ptr != NULL){free(lowbat_buffer_ptr); lowbat_buffer_ptr = NULL;} //free low batt buffer
+    #endif
+    #ifndef NO_CPU_ICON
+        if (cputemp_buffer_ptr != NULL){free(cputemp_buffer_ptr); cputemp_buffer_ptr = NULL;} //free cpu temp buffer
+    #endif
+
     if (dispmanx_display != 0){vc_dispmanx_display_close(dispmanx_display); print_stderr("dispmanx freed.\n");}
     bcm_host_deinit(); //deinit bcm host when program closes
     already_killed = true;
@@ -1033,53 +1068,79 @@ static void program_usage(void){ //display help
 
     fprintf(stderr, "Arguments:\n\t-h or -help: show arguments list.\n");
 
+#if !(defined(NO_BATTERY_ICON) && defined(NO_CPU_ICON))
     fprintf(stderr,"\nWarning icons:\n"
+    #ifndef NO_BATTERY_ICON
+        "\t-lowbat_test (force display of low battery icon, for test purpose).\n"
+    #endif
+    #ifndef NO_CPU_ICON
+        "\t-cputemp_test (force display of CPU temperature warning icon, for test purpose).\n"
+    #endif
     "\t-icons_pos tl/tr/bl/br (top left,right, bottom left,right. Default:%s).\n"
     "\t-icons_height <1-100> (icon height, percent of screen height. Default:%d).\n"
-    "\t-lowbat_test (force display of low battery icon, for test purpose).\n"
-    "\t-cputemp_test (force display of CPU temperature warning icon, for test purpose).\n"
     , warn_icons_pos_str, warn_icons_height_percent);
+#endif
 
     fprintf(stderr,"\nLow battery management:\n"
     "\t-battery_rsoc <PATH> (file containing battery percentage. Default:'%s').\n"
     "\t-battery_voltage <PATH> (file containing battery voltage. Default:'%s').\n"
     "\t-battery_volt_divider <NUM> (voltage divider to get voltage. Default:'%u').\n"
     "\t-lowbat_limit <0-90> (threshold, used with -battery_rsoc. Default:%d).\n"
+    , battery_rsoc_path, battery_volt_path, battery_volt_divider, lowbat_limit);
+#ifndef NO_GPIO
+    fprintf(stderr,
     "\t-lowbat_gpio <PIN> (low battery gpio pin, -1 to disable. Default:%d).\n"
     "\t-lowbat_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
-    , battery_rsoc_path, battery_volt_path, battery_volt_divider, lowbat_limit, lowbat_gpio, lowbat_gpio_reversed?1:0);
+    , lowbat_gpio, lowbat_gpio_reversed?1:0);
+#endif
 
+#ifndef NO_OSD
     fprintf(stderr,
     "\nOSD display:\n"
-    "\t-display <0-255> (Dispmanx display. Default:%u).\n"
-    "\t-layer <NUM> (Dispmanx layer. Default:%u).\n"
-    "\t-timeout <1-20> (Hide OSD after given duration. Default:%d).\n"
-    "\t-check <1-120> (check rate in hz. Default:%d).\n"
+    "\t-osd_test (full OSD display, for test purpose).\n"
+    #ifndef NO_SIGNAL_FILE
     "\t-signal_file <PATH> (useful if you can't send signal to program. Should only contain '0', SIGUSR1 or SIGUSR2 value.).\n"
+    #endif
+    );
+    #ifndef NO_GPIO
+    fprintf(stderr,
     "\t-osd_gpio <PIN> (OSD trigger gpio pin, -1 to disable. Default:%d).\n"
     "\t-osd_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
+    , osd_gpio, osd_gpio_reversed?1:0);
+    #endif
+    fprintf(stderr, 
+    "\t-osd_max_lines <1-999> (absolute lines count limit on screen. Default:%d).\n"
+    "\t-osd_text_padding <0-100> (text distance (px) to screen border. Default:%d).\n"
     "\t-osd_test (full OSD display, for test purpose).\n"
-    , display_number, osd_layer, osd_timeout, osd_check_rate, osd_gpio, osd_gpio_reversed?1:0);
+    , osd_max_lines, osd_text_padding);
+#endif
 
+#if !(defined(NO_OSD) && defined(NO_TINYOSD))
     fprintf(stderr,
     "\nOSD styling:\n"
+    "\t-timeout <1-20> (Hide OSD after given duration. Default:%d).\n"
     "\t-bg_color <RGB,RGBA> (background color. Default:%s).\n"
     "\t-text_color <RGB,RGBA> (text color. Default:%s).\n"
     "\t-warn_color <RGB,RGBA> (warning text color. Default:%s).\n"
     "\t-crit_color <RGB,RGBA> (critical text color. Default:%s).\n"
     "Note: <RGB,RGBA> uses html format (excl. # char.), allow both 1 or 2 hex per channel.\n"
-    "\t-max_lines <1-999> (absolute lines count limit on screen. Default:%d).\n"
-    "\t-text_padding <0-100> (text distance (px) to screen border. Default:%d).\n"
-    , osd_color_bg_str, osd_color_text_str, osd_color_warn_str, osd_color_crit_str, osd_max_lines, osd_text_padding);
+    , osd_timeout, osd_color_bg_str, osd_color_text_str, osd_color_warn_str, osd_color_crit_str);
+#endif
 
+#ifndef NO_TINYOSD
     fprintf(stderr,
     "\nHeader OSD specific:\n"
+    "\t-osd_header_test (Tiny OSD display, for test purpose).\n"
     "\t-osd_header_position <t/b> (top, bottom. Default:%s).\n"
     "\t-osd_header_height <1-100> (OSD height, percent of screen height. Default:%d).\n"
+    , osd_header_pos_str, osd_header_height_percent);
+    #ifndef NO_GPIO
+    fprintf(stderr,
     "\t-osd_header_gpio <PIN> (OSD trigger gpio pin, -1 to disable. Default:%d).\n"
     "\t-osd_header_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
-    "\t-osd_header_test (Tiny OSD display, for test purpose).\n"
-    , osd_header_pos_str, osd_header_height_percent, osd_header_gpio, osd_header_gpio_reversed?1:0);
+    , osd_header_gpio, osd_header_gpio_reversed?1:0);
+    #endif
+#endif
 
     fprintf(stderr,
     "\nOSD data:\n"
@@ -1092,14 +1153,35 @@ static void program_usage(void){ //display help
 
     fprintf(stderr,
     "\nProgram:\n"
+    "\t-check <1-120> (check rate in hz. Default:%d).\n"
+    "\t-display <0-255> (Dispmanx display. Default:%u).\n"
+    "\t-layer <NUM> (Dispmanx layer. Default:%u).\n"
     "\t-debug <0-1> (enable stderr debug output. Default:%d).\n"
+    , osd_check_rate, display_number, osd_layer, debug?1:0);
+
+#ifdef BUFFER_PNG_EXPORT
+    fprintf(stderr,
     "\t-buffer_png_export (export all drawn buffers to png files into debug_export folder. Default:%s).\n"
-    , debug?1:0, debug_buffer_png_export?"on":"off");
+    , debug_buffer_png_export?"on":"off");
+#endif
 }
 
 int main(int argc, char *argv[]){
     program_start_time = get_time_double(); //program start time, used for detailed outputs
-    bool osd_test = false, osd_header_test = false, lowbat_test = false, cputemp_test = false; //test vars
+
+    //test vars
+    #ifndef NO_OSD
+        bool osd_test = false;
+    #endif
+    #ifndef NO_TINYOSD
+        bool osd_header_test = false;
+    #endif
+    #ifndef NO_BATTERY_ICON
+        bool lowbat_test = false;
+    #endif
+    #ifndef NO_CPU_ICON
+        bool cputemp_test = false;
+    #endif
 
     program_get_path(argv, program_path, program_name); //get current program path and filename
 
@@ -1108,11 +1190,17 @@ int main(int argc, char *argv[]){
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0){program_usage(); return EXIT_SUCCESS;
 
         //Warning icons
+#if !(defined(NO_BATTERY_ICON) && defined(NO_CPU_ICON))
         } else if (strcmp(argv[i], "-icons_pos") == 0){strncpy(warn_icons_pos_str, argv[++i], sizeof(warn_icons_pos_str));
         } else if (strcmp(argv[i], "-icons_height") == 0){warn_icons_height_percent = atoi(argv[++i]);
             if (int_constrain(&warn_icons_height_percent, 1, 100) != 0){print_stderr("invalid -icons_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", warn_icons_height_percent);}
+    #ifndef NO_BATTERY_ICON
         } else if (strcmp(argv[i], "-lowbat_test") == 0){lowbat_test = true; print_stderr("low battery icon will be displayed until program closes\n");
+    #endif
+    #ifndef NO_CPU_ICON
         } else if (strcmp(argv[i], "-cputemp_test") == 0){cputemp_test = true; print_stderr("cpu temperature warning icon will be displayed until program closes\n");
+    #endif
+#endif
 
         //Low battery management
         } else if (strcmp(argv[i], "-battery_rsoc") == 0){strncpy(battery_rsoc_path, argv[++i], PATH_MAX-1);
@@ -1121,39 +1209,48 @@ int main(int argc, char *argv[]){
             if (battery_volt_divider == 0){print_stderr("invalid -battery_volt_divider argument, reset to '1', value needs to be over 0\n"); battery_volt_divider = 1;}
         } else if (strcmp(argv[i], "-lowbat_limit") == 0){lowbat_limit = atoi(argv[++i]);
             if (int_constrain(&lowbat_limit, 0, 90) != 0){print_stderr("invalid -lowbat_limit argument, reset to '%d', allow from '0' to '90' (incl.)\n", lowbat_limit);}
+#ifndef NO_GPIO
         } else if (strcmp(argv[i], "-lowbat_gpio") == 0){lowbat_gpio = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-lowbat_gpio_reversed") == 0){lowbat_gpio_reversed = atoi(argv[++i]) > 0;
+#endif
 
         //OSD display
-        } else if (strcmp(argv[i], "-display") == 0){display_number = atoi(argv[++i]);
-            if (int_constrain(&display_number, 0, 255) != 0){print_stderr("invalid -display argument, reset to '%d', allow from '0' to '255' (incl.)\n", display_number);}
-        } else if (strcmp(argv[i], "-layer") == 0){osd_layer = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "-timeout") == 0){osd_timeout = atoi(argv[++i]);
-            if (int_constrain(&osd_timeout, 1, 20) != 0){print_stderr("invalid -timeout argument, reset to '%d', allow from '1' to '20' (incl.)\n", osd_timeout);}
-        } else if (strcmp(argv[i], "-check") == 0){osd_check_rate = atoi(argv[++i]);
-            if (int_constrain(&osd_check_rate, 1, 120) != 0){print_stderr("invalid -check argument, reset to '%d', allow from '1' to '120' (incl.)\n", osd_check_rate);}
+#ifndef NO_OSD
+        } else if (strcmp(argv[i], "-osd_test") == 0){osd_test = true; print_stderr("full OSD will be displayed until program closes\n");
+    #ifndef NO_SIGNAL_FILE
         } else if (strcmp(argv[i], "-signal_file") == 0){strncpy(signal_path, argv[++i], PATH_MAX-1);
+    #endif
+    #ifndef NO_GPIO
         } else if (strcmp(argv[i], "-osd_gpio") == 0){osd_gpio = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-osd_gpio_reversed") == 0){osd_gpio_reversed = atoi(argv[++i]) > 0;
-        } else if (strcmp(argv[i], "-osd_test") == 0){osd_test = true; print_stderr("full OSD will be displayed until program closes\n");
+    #endif
+        } else if (strcmp(argv[i], "-osd_max_lines") == 0){osd_max_lines = atoi(argv[++i]);
+            if (int_constrain(&osd_max_lines, 1, 999) != 0){print_stderr("invalid -osd_max_lines argument, reset to '%d', allow from '1' to '999' (incl.)\n", osd_max_lines);}
+        } else if (strcmp(argv[i], "-osd_text_padding") == 0){osd_text_padding = atoi(argv[++i]);
+            if (int_constrain(&osd_text_padding, 0, 100) != 0){print_stderr("invalid -osd_text_padding argument, reset to '%d', allow from '0' to '100' (incl.)\n", osd_text_padding);}
+#endif
 
         //OSD styling
+#if !(defined(NO_OSD) && defined(NO_TINYOSD))
+        } else if (strcmp(argv[i], "-timeout") == 0){osd_timeout = atoi(argv[++i]);
+            if (int_constrain(&osd_timeout, 1, 20) != 0){print_stderr("invalid -timeout argument, reset to '%d', allow from '1' to '20' (incl.)\n", osd_timeout);}
         } else if (strcmp(argv[i], "-bg_color") == 0){strncpy(osd_color_bg_str, argv[++i], sizeof(osd_color_bg_str));
         } else if (strcmp(argv[i], "-text_color") == 0){strncpy(osd_color_text_str, argv[++i], sizeof(osd_color_text_str));
         } else if (strcmp(argv[i], "-warn_color") == 0){strncpy(osd_color_warn_str, argv[++i], sizeof(osd_color_warn_str));
         } else if (strcmp(argv[i], "-crit_color") == 0){strncpy(osd_color_crit_str, argv[++i], sizeof(osd_color_crit_str));
-        } else if (strcmp(argv[i], "-max_lines") == 0){osd_max_lines = atoi(argv[++i]);
-            if (int_constrain(&osd_max_lines, 1, 999) != 0){print_stderr("invalid -max_lines argument, reset to '%d', allow from '1' to '999' (incl.)\n", osd_max_lines);}
-        } else if (strcmp(argv[i], "-text_padding") == 0){osd_text_padding = atoi(argv[++i]);
-            if (int_constrain(&osd_text_padding, 0, 100) != 0){print_stderr("invalid -text_padding argument, reset to '%d', allow from '0' to '100' (incl.)\n", osd_text_padding);}
+#endif
 
         //Tiny OSD specific
+#ifndef NO_TINYOSD
+        } else if (strcmp(argv[i], "-osd_header_test") == 0){osd_header_test = true; print_stderr("tiny OSD will be displayed until program closes\n");
         } else if (strcmp(argv[i], "-osd_header_position") == 0){strncpy(osd_header_pos_str, argv[++i], sizeof(osd_header_pos_str));
         } else if (strcmp(argv[i], "-osd_header_height") == 0){osd_header_height_percent = atoi(argv[++i]);
-            if (int_constrain(&osd_header_height_percent, 1, 100) != 0){print_stderr("invalid -header_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", osd_header_height_percent);}
+            if (int_constrain(&osd_header_height_percent, 1, 100) != 0){print_stderr("invalid -osd_header_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", osd_header_height_percent);}
+    #ifndef NO_GPIO
         } else if (strcmp(argv[i], "-osd_header_gpio") == 0){osd_header_gpio = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-osd_header_gpio_reversed") == 0){osd_header_gpio_reversed = atoi(argv[++i]) > 0;
-        } else if (strcmp(argv[i], "-osd_header_test") == 0){osd_header_test = true; print_stderr("tiny OSD will be displayed until program closes\n");
+    #endif
+#endif
 
         //OSD data
         } else if (strcmp(argv[i], "-rtc") == 0){strncpy(rtc_path, argv[++i], PATH_MAX-1);
@@ -1164,8 +1261,15 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-backlight_max") == 0){strncpy(backlight_max_path, argv[++i], PATH_MAX-1);
 
         //Program
+        } else if (strcmp(argv[i], "-display") == 0){display_number = atoi(argv[++i]);
+            if (int_constrain(&display_number, 0, 255) != 0){print_stderr("invalid -display argument, reset to '%d', allow from '0' to '255' (incl.)\n", display_number);}
+        } else if (strcmp(argv[i], "-layer") == 0){osd_layer = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-check") == 0){osd_check_rate = atoi(argv[++i]);
+            if (int_constrain(&osd_check_rate, 1, 120) != 0){print_stderr("invalid -check argument, reset to '%d', allow from '1' to '120' (incl.)\n", osd_check_rate);}
         } else if (strcmp(argv[i], "-debug") == 0){debug = atoi(argv[++i]) > 0;
+#ifdef BUFFER_PNG_EXPORT
         } else if (strcmp(argv[i], "-buffer_png_export") == 0){debug_buffer_png_export = true;
+#endif
         }
     }
     
@@ -1192,6 +1296,12 @@ int main(int argc, char *argv[]){
     signal(SIGUSR1, tty_signal_handler); //use signal SIGUSR1 as trigger to display full OSD
     signal(SIGUSR2, tty_signal_handler); //use signal SIGUSR2 as trigger to display header OSD
     atexit(program_close); at_quick_exit(program_close); //run on program exit
+    #ifdef NO_SIGNAL
+        print_stderr("osd trigger using signal disabled at compilation time.\n");
+    #endif
+    #ifdef NO_SIGNAL_FILE
+        print_stderr("osd trigger using file disabled at compilation time.\n");
+    #endif
 
     //bcm init
     bcm_host_init();
@@ -1238,150 +1348,203 @@ int main(int argc, char *argv[]){
         }
     }
 
-    if (lowbat_gpio > -1 || osd_gpio > -1 || osd_header_gpio > -1){gpio_init();} //gpio
+    #ifndef NO_GPIO //gpio
+        if (lowbat_gpio > -1 || osd_gpio > -1 || osd_header_gpio > -1){gpio_init();}
+    #else
+        print_stderr("gpio features disabled at compilation time.\n");
+    #endif
 
     //warning icons
-    #define icons_count 2 //max amount of displayed icons at once
-    int32_t icons_height = (double)display_height * (double)warn_icons_height_percent / 100.; //final icon height
-    int32_t icons_org_width[icons_count]={0}, icons_org_height[icons_count]={0}, icons_x[icons_count]={0}, icons_width[icons_count]={0}; //original size, final x, width
-    int32_t icons_y = icons_padding, icons_y_dir = 1; //start y position, y direction
-    if (warn_icons_pos_str[0]!='t'){icons_y = display_height - icons_padding - icons_height; icons_y_dir = -1;} //bottom alignment
-    VC_RECT_T icons_dest_rect = {.height = icons_height};
-    uint8_t icon_index = 0;
+    #if !(defined(NO_BATTERY_ICON) && defined(NO_CPU_ICON))
+        #define icons_count 2 //max amount of displayed icons at once
+        int32_t icons_height = (double)display_height * (double)warn_icons_height_percent / 100.; //final icon height
+        int32_t icons_org_width[icons_count]={0}, icons_org_height[icons_count]={0}, icons_x[icons_count]={0}, icons_width[icons_count]={0}; //original size, final x, width
+        int32_t icons_y = icons_padding, icons_y_dir = 1; //start y position, y direction
+        if (warn_icons_pos_str[0]!='t'){icons_y = display_height - icons_padding - icons_height; icons_y_dir = -1;} //bottom alignment
+        VC_RECT_T icons_dest_rect = {.height = icons_height};
+        uint8_t icon_index = 0;
+    #endif
 
-    //low battery icon:0
-    VC_RECT_T lowbat_rect = {0};
-    DISPMANX_ELEMENT_HANDLE_T lowbat_element = 0;
-    DISPMANX_RESOURCE_HANDLE_T lowbat_resource = dispmanx_resource_create_from_png(lowbat_img_file, &lowbat_rect);
-    if (lowbat_resource > 0){
-        icons_width[icon_index] = (double)icons_height * ((double)lowbat_rect.width / (double)lowbat_rect.height); //final width
-        if (warn_icons_pos_str[1]=='l'){icons_x[icon_index] = icons_padding; //left alignement
-        } else {icons_x[icon_index] = display_width - icons_padding - icons_width[icon_index];} //right alignement
-        icons_org_width[icon_index] = lowbat_rect.width; icons_org_height[icon_index] = lowbat_rect.height; //backup original resolution
-        vc_dispmanx_rect_set(&lowbat_rect, 0, 0, lowbat_rect.width << 16, lowbat_rect.height << 16);
-    } else {print_stderr("low battery icon disabled\n");}
-    icon_index++;
+    #ifndef NO_BATTERY_ICON //low battery icon:0
+        bool lowbat_trigger = false, lowbat_displayed = false; //low battery icon displayed
+        VC_RECT_T lowbat_rect = {0};
+        DISPMANX_ELEMENT_HANDLE_T lowbat_element = 0;
+        DISPMANX_RESOURCE_HANDLE_T lowbat_resource = dispmanx_resource_create_from_png(lowbat_img_file, &lowbat_rect);
+        if (lowbat_resource > 0){
+            icons_width[icon_index] = (double)icons_height * ((double)lowbat_rect.width / (double)lowbat_rect.height); //final width
+            if (warn_icons_pos_str[1]=='l'){icons_x[icon_index] = icons_padding; //left alignement
+            } else {icons_x[icon_index] = display_width - icons_padding - icons_width[icon_index];} //right alignement
+            icons_org_width[icon_index] = lowbat_rect.width; icons_org_height[icon_index] = lowbat_rect.height; //backup original resolution
+            vc_dispmanx_rect_set(&lowbat_rect, 0, 0, lowbat_rect.width << 16, lowbat_rect.height << 16);
+        } else {print_stderr("low battery icon disabled\n");}
+        icon_index++;
+    #else
+        print_stderr("low battery icon disabled at compilation time.\n");
+    #endif
 
-    //cpu temperature icon:1
-    VC_RECT_T cputemp_rect = {0};
-    DISPMANX_ELEMENT_HANDLE_T cputemp_element = 0;
-    DISPMANX_RESOURCE_HANDLE_T cputemp_resource = dispmanx_resource_create_from_png(cputemp_img_file, &cputemp_rect);
-    if (cputemp_resource > 0){
-        icons_width[icon_index] = (double)icons_height * ((double)cputemp_rect.width / (double)cputemp_rect.height); //final width
-        if (warn_icons_pos_str[1]=='l'){icons_x[icon_index] = icons_padding; //left alignement
-        } else {icons_x[icon_index] = display_width - icons_padding - icons_width[icon_index];} //right alignement
-        icons_org_width[icon_index] = cputemp_rect.width; icons_org_height[icon_index] = cputemp_rect.height; //backup original resolution
-        vc_dispmanx_rect_set(&cputemp_rect, 0, 0, cputemp_rect.width << 16, cputemp_rect.height << 16);
-    } else {print_stderr("cpu temperature warning icon disabled\n");}
-    icon_index++;
+    #ifndef NO_CPU_ICON //cpu temperature icon:1
+        bool cputemp_trigger = false, cputemp_displayed = false; //cpu temp icon displayed
+        VC_RECT_T cputemp_rect = {0};
+        DISPMANX_ELEMENT_HANDLE_T cputemp_element = 0;
+        DISPMANX_RESOURCE_HANDLE_T cputemp_resource = dispmanx_resource_create_from_png(cputemp_img_file, &cputemp_rect);
+        if (cputemp_resource > 0){
+            icons_width[icon_index] = (double)icons_height * ((double)cputemp_rect.width / (double)cputemp_rect.height); //final width
+            if (warn_icons_pos_str[1]=='l'){icons_x[icon_index] = icons_padding; //left alignement
+            } else {icons_x[icon_index] = display_width - icons_padding - icons_width[icon_index];} //right alignement
+            icons_org_width[icon_index] = cputemp_rect.width; icons_org_height[icon_index] = cputemp_rect.height; //backup original resolution
+            vc_dispmanx_rect_set(&cputemp_rect, 0, 0, cputemp_rect.width << 16, cputemp_rect.height << 16);
+        } else {print_stderr("cpu temperature warning icon disabled\n");}
+        icon_index++;
+    #else
+        print_stderr("cpu overheat icon disabled at compilation time.\n");
+    #endif
 
     //osd
-    double osd_scaling = (double)display_height / (osd_text_padding * 2 + osd_max_lines * RASPIDMX_FONT_HEIGHT);
-    int osd_width = ALIGN_TO_16((int)(display_width / osd_scaling)), osd_height = ALIGN_TO_16((int)(display_height / osd_scaling));
-    print_stderr("osd resolution: %dx%d (%.4lfx)\n", osd_width, osd_height, (double)osd_width/display_width);
-    DISPMANX_ELEMENT_HANDLE_T osd_element = 0;
-    DISPMANX_RESOURCE_HANDLE_T osd_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_width, osd_height, &vc_image_ptr);
-    double osd_update_interval = 1. / osd_check_rate;
+    #ifndef NO_OSD
+        double osd_scaling = (double)display_height / (osd_text_padding * 2 + osd_max_lines * RASPIDMX_FONT_HEIGHT);
+        int osd_width = ALIGN_TO_16((int)(display_width / osd_scaling)), osd_height = ALIGN_TO_16((int)(display_height / osd_scaling));
+        print_stderr("osd resolution: %dx%d (%.4lfx)\n", osd_width, osd_height, (double)osd_width/display_width);
+        DISPMANX_ELEMENT_HANDLE_T osd_element = 0;
+        DISPMANX_RESOURCE_HANDLE_T osd_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_width, osd_height, &vc_image_ptr);
+    #else
+        print_stderr("full screen osd disabled at compilation time.\n");
+    #endif
 
     //osd header
-    int osd_header_y = 0, osd_header_height_dest = (double)display_height * ((double)osd_header_height_percent / 100);
-    double osd_header_downsizing = (double)osd_header_height_dest / RASPIDMX_FONT_HEIGHT;
-    int osd_header_width = ALIGN_TO_16((int)((double)display_width / osd_header_downsizing)), osd_header_height = ALIGN_TO_16(RASPIDMX_FONT_HEIGHT);
-    print_stderr("osd header resolution: %dx%d (%.4lf)\n", osd_header_width, osd_header_height, osd_header_downsizing);
-    DISPMANX_ELEMENT_HANDLE_T osd_header_element = 0;
-    DISPMANX_RESOURCE_HANDLE_T osd_header_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_header_width, osd_header_height, &vc_image_ptr);
-    if (osd_header_resource > 0 && osd_header_pos_str[0]=='b'){osd_header_y = display_height - osd_header_height_dest;} //footer alignment
+    #ifndef NO_TINYOSD
+        int osd_header_y = 0, osd_header_height_dest = (double)display_height * ((double)osd_header_height_percent / 100);
+        double osd_header_downsizing = (double)osd_header_height_dest / RASPIDMX_FONT_HEIGHT;
+        int osd_header_width = ALIGN_TO_16((int)((double)display_width / osd_header_downsizing)), osd_header_height = ALIGN_TO_16(RASPIDMX_FONT_HEIGHT);
+        print_stderr("osd header resolution: %dx%d (%.4lf)\n", osd_header_width, osd_header_height, osd_header_downsizing);
+        DISPMANX_ELEMENT_HANDLE_T osd_header_element = 0;
+        DISPMANX_RESOURCE_HANDLE_T osd_header_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_header_width, osd_header_height, &vc_image_ptr);
+        if (osd_header_resource > 0 && osd_header_pos_str[0]=='b'){osd_header_y = display_height - osd_header_height_dest;} //footer alignment
+    #else
+        print_stderr("tiny osd disabled at compilation time.\n");
+    #endif
 
     //main loop
     print_stderr("starting main loop\n");
 
-    double gpio_check_start_time = -1., sec_check_start_time = -1.; //gpio, seconds interval check start time
-    bool lowbat_trigger = false, lowbat_displayed = false; //low battery icon displayed
-    bool cputemp_trigger = false, cputemp_displayed = false; //cpu temp icon displayed
-    bool signal_file_used = false; //signal read from a file
+    double osd_update_interval = 1. / osd_check_rate;
+    double gpio_check_start_time = -1, sec_check_start_time = -1.; //gpio, seconds interval check start time
+    #if !defined(NO_SIGNAL_FILE) && !(defined(NO_OSD) && defined(NO_TINYOSD))
+        bool signal_file_used = false; //signal read from a file
+    #endif
     bool icon_update = false; //warning icon update trigger
 
     while (!kill_requested){ //main loop
         double loop_start_time = get_time_double(); //loop start time
         dispmanx_update = vc_dispmanx_update_start(0); //start vc update
-
-        if (!signal_file_used && signal_path[0] != '\0' && access(signal_path, R_OK) && osd_start_time < 0. && osd_header_start_time < 0.){ //check signal file value
-            int tmp_sig = 0; FILE *filehandle = fopen(signal_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &tmp_sig); fclose(filehandle);}
-            if (tmp_sig == SIGUSR1){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
-            } else if (tmp_sig == SIGUSR2){osd_header_start_time = loop_start_time; signal_file_used = true;} //header osd
-        }
+        #if !defined(NO_SIGNAL_FILE) && !(defined(NO_OSD) && defined(NO_TINYOSD))
+            if (!signal_file_used && signal_path[0] != '\0' && access(signal_path, R_OK) && osd_start_time < 0. && osd_header_start_time < 0.){ //check signal file value
+                int tmp_sig = 0; FILE *filehandle = fopen(signal_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &tmp_sig); fclose(filehandle);}
+                if (tmp_sig == SIGUSR1){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
+                } else if (tmp_sig == SIGUSR2){osd_header_start_time = loop_start_time; signal_file_used = true;} //header osd
+            }
+        #endif
 
         if (loop_start_time - gpio_check_start_time > 0.25){ //check gpio 4 times a sec
-            if (osd_start_time < 0 && gpio_check(1)){osd_start_time = loop_start_time;} //osd gpio trigger
-            if (osd_header_start_time < 0 && gpio_check(2)){osd_header_start_time = loop_start_time;} //tiny osd gpio trigger
+            #if !defined(NO_GPIO) && !(defined(NO_OSD) && defined(NO_TINYOSD))
+                if (osd_start_time < 0 && gpio_check(1)){osd_start_time = loop_start_time;} //osd gpio trigger
+                if (osd_header_start_time < 0 && gpio_check(2)){osd_header_start_time = loop_start_time;} //tiny osd gpio trigger
+            #endif
             if (loop_start_time - sec_check_start_time > 1.){ //warning trigger every seconds
-                lowbat_trigger = lowbat_sysfs() || gpio_check(0) || lowbat_test;
-                cputemp_trigger = cputemp_sysfs() || cputemp_test;
+                #if !defined(NO_GPIO) && !defined(NO_BATTERY_ICON)
+                    lowbat_trigger = gpio_check(0);
+                #endif
+
+                #ifndef NO_BATTERY_ICON
+                    lowbat_trigger = lowbat_trigger || lowbat_sysfs() || lowbat_test;
+                #elif !(defined(NO_OSD) && defined(NO_TINYOSD))
+                    lowbat_sysfs();
+                #endif
+
+                #ifndef NO_CPU_ICON
+                    cputemp_trigger = cputemp_sysfs() || cputemp_test;
+                #elif !(defined(NO_OSD) && defined(NO_TINYOSD))
+                    cputemp_sysfs();
+                #endif
+
                 icon_update = true;
             }
             gpio_check_start_time = loop_start_time;
         }
 
         //full osd
-        if (osd_test){osd_start_time = loop_start_time;}
-        if (osd_resource > 0 && osd_start_time > 0){
-            if (loop_start_time - osd_start_time > (double)osd_timeout){ //osd timeout
-                if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element); osd_element = 0;}
-                if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
-                osd_start_time = -1.;
-            } else if (osd_header_start_time < 0){ //only if header osd not displayed
-                osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
+        #ifndef NO_OSD
+            if (osd_test){osd_start_time = loop_start_time;}
+            if (osd_resource > 0 && osd_start_time > 0){
+                if (loop_start_time - osd_start_time > (double)osd_timeout){ //osd timeout
+                    if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element); osd_element = 0;}
+                    #ifndef NO_SIGNAL_FILE
+                        if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
+                    #endif
+                    osd_start_time = -1.;
+                } else if (osd_header_start_time < 0){ //only if header osd not displayed
+                    osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
+                }
             }
-        }
+        #endif
 
         //header osd
-        if (osd_header_test){osd_header_start_time = loop_start_time;}
-        if (osd_header_resource > 0 && osd_header_start_time > 0){
-            if (loop_start_time - osd_header_start_time > (double)osd_timeout){ //osd timeout
-                if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element); osd_header_element = 0;}
-                if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
-                osd_header_start_time = -1.;
-            } else if (osd_start_time < 0 || osd_header_test){ //only if full osd not displayed
-                osd_header_build_element(osd_header_resource, &osd_header_element, dispmanx_update, osd_header_width, osd_header_height, 0, osd_header_y, display_width, osd_header_height_dest);
+        #ifndef NO_TINYOSD
+            if (osd_header_test){osd_header_start_time = loop_start_time;}
+            if (osd_header_resource > 0 && osd_header_start_time > 0){
+                if (loop_start_time - osd_header_start_time > (double)osd_timeout){ //osd timeout
+                    if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element); osd_header_element = 0;}
+                    #ifndef NO_SIGNAL_FILE
+                        if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
+                    #endif
+                    osd_header_start_time = -1.;
+                } else if (osd_start_time < 0 || osd_header_test){ //only if full osd not displayed
+                    osd_header_build_element(osd_header_resource, &osd_header_element, dispmanx_update, osd_header_width, osd_header_height, 0, osd_header_y, display_width, osd_header_height_dest);
+                }
             }
-        }
+        #endif
 
         //warning icons
-        icon_index = 0;
-        icons_dest_rect.y = icons_y; //reset final y position
+        #if !(defined(NO_BATTERY_ICON) && defined(NO_CPU_ICON))
+            icon_index = 0;
+            icons_dest_rect.y = icons_y; //reset final y position
+        #endif
 
-        if (lowbat_resource > 0){ //low battery icon
-            if (lowbat_trigger){
-                if (icon_update){
-                    if (battery_rsoc >= 0){ //update dynamic icon
-                        lowbatt_build_element(lowbat_resource, &lowbat_element, dispmanx_update, icons_org_width[icon_index], icons_org_height[icon_index], icons_x[icon_index], icons_dest_rect.y, icons_width[icon_index], icons_height);
-                    } else if (!lowbat_displayed && lowbat_element == 0){ //display static icon once
-                        icons_dest_rect.x = icons_x[icon_index]; icons_dest_rect.width = icons_width[icon_index]; //icon x/width
-                        lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer + 2, &icons_dest_rect, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+        #ifndef NO_BATTERY_ICON
+            if (lowbat_resource > 0){ //low battery icon
+                if (lowbat_trigger){
+                    if (icon_update){
+                        if (battery_rsoc >= 0){ //update dynamic icon
+                            lowbatt_build_element(lowbat_resource, &lowbat_element, dispmanx_update, icons_org_width[icon_index], icons_org_height[icon_index], icons_x[icon_index], icons_dest_rect.y, icons_width[icon_index], icons_height);
+                        } else if (!lowbat_displayed && lowbat_element == 0){ //display static icon once
+                            icons_dest_rect.x = icons_x[icon_index]; icons_dest_rect.width = icons_width[icon_index]; //icon x/width
+                            lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer + 2, &icons_dest_rect, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
+                        }
+                        lowbat_displayed = true;
                     }
-                    lowbat_displayed = true;
+                    icons_dest_rect.y += icons_height * icons_y_dir; //next icon y position
+                } else if (lowbat_displayed){ //remove icon
+                    if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
+                    lowbat_displayed = false;
                 }
-                icons_dest_rect.y += icons_height * icons_y_dir; //next icon y position
-            } else if (lowbat_displayed){ //remove icon
-                if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element); lowbat_element = 0;}
-                lowbat_displayed = false;
             }
-        }
-        icon_index++;
+            icon_index++;
+        #endif
 
-        if (cputemp_resource > 0){ //cpu temp icon
-            if (cputemp_trigger){
-                if (icon_update){
-                    cputemp_build_element(cputemp_resource, &cputemp_element, dispmanx_update, icons_org_width[icon_index], icons_org_height[icon_index], icons_x[icon_index], icons_dest_rect.y, icons_width[icon_index], icons_height);
-                    cputemp_displayed = true;
+        #ifndef NO_CPU_ICON
+            if (cputemp_resource > 0){ //cpu temp icon
+                if (cputemp_trigger){
+                    if (icon_update){
+                        cputemp_build_element(cputemp_resource, &cputemp_element, dispmanx_update, icons_org_width[icon_index], icons_org_height[icon_index], icons_x[icon_index], icons_dest_rect.y, icons_width[icon_index], icons_height);
+                        cputemp_displayed = true;
+                    }
+                    icons_dest_rect.y += icons_height * icons_y_dir; //next icon y position
+                } else if (cputemp_displayed){ //remove icon
+                    if (cputemp_element > 0){vc_dispmanx_element_remove(dispmanx_update, cputemp_element); cputemp_element = 0;}
+                    cputemp_displayed = false;
                 }
-                //icons_dest_rect.y += icons_height * icons_y_dir; //next icon y position
-            } else if (cputemp_displayed){ //remove icon
-                if (cputemp_element > 0){vc_dispmanx_element_remove(dispmanx_update, cputemp_element); cputemp_element = 0;}
-                cputemp_displayed = false;
             }
-        }
-        //icon_index++;
+            icon_index++;
+        #endif
 
         if (icon_update){sec_check_start_time = loop_start_time; icon_update = false;} //disable icon update until next loop
 
@@ -1401,11 +1564,31 @@ int main(int argc, char *argv[]){
 
     //free vc ressources
     dispmanx_update = vc_dispmanx_update_start(0); //start vc update
-    if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element);} //remove low battery icon
-    if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element);} //remove osd
+    #ifndef NO_BATTERY_ICON
+        if (lowbat_element > 0){vc_dispmanx_element_remove(dispmanx_update, lowbat_element);} //remove low battery icon
+    #endif
+    #ifndef NO_CPU_ICON
+        if (cputemp_element > 0){vc_dispmanx_element_remove(dispmanx_update, cputemp_element);} //remove cpu icon
+    #endif
+    #ifndef NO_OSD
+        if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element);} //remove osd
+    #endif
+    #ifndef NO_TINYOSD
+        if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element);} //remove tiny osd
+    #endif
     vc_dispmanx_update_submit_sync(dispmanx_update); //push vc update
-    if (lowbat_resource > 0){vc_dispmanx_resource_delete(lowbat_resource);}
-    if (osd_resource > 0){vc_dispmanx_resource_delete(osd_resource);}
+    #ifndef NO_BATTERY_ICON
+        if (lowbat_resource > 0){vc_dispmanx_resource_delete(lowbat_resource);}
+    #endif
+    #ifndef NO_CPU_ICON
+        if (cputemp_resource > 0){vc_dispmanx_resource_delete(cputemp_resource);}
+    #endif
+    #ifndef NO_OSD
+        if (osd_resource > 0){vc_dispmanx_resource_delete(osd_resource);}
+    #endif
+    #ifndef NO_TINYOSD
+        if (osd_header_resource > 0){vc_dispmanx_resource_delete(osd_header_resource);}
+    #endif
 
     //gpiod
     #ifdef USE_GPIOD

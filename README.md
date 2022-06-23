@@ -54,8 +54,19 @@ Credits goes where its due:
     * **Important note**: Will fail if one GPIO pin already used by another program.  
   <br>
 
+- Disable specific features:
+  - ``NO_GPIO`` : (DS1) : Fully disable all GPIO related features.  
+  - ``NO_SIGNAL`` : (DS2) : Ignore ``SIGUSR1`` and ``SIGUSR2`` signal to trigger OSD.  
+  - ``NO_SIGNAL_FILE`` : (DS3) : Disable OSD trigger using file.  
+  - ``NO_BATTERY_ICON`` : (DS4) : Disable low battery warning icon.  
+  - ``NO_CPU_ICON`` : (DS5) : Disable CPU overheat warning icon.  
+  - ``NO_OSD`` : (DS6) : Disable full screen OSD.  
+  - ``NO_TINYOSD`` : (DS7) : Disable Tiny OSD.  
+  <br>
+
 - Debug specific:
-  - ``CHARSET_EXPORT``: Export current characters set defined in [font.h](font.h) to [res/charset_raspidmx.png](res/charset_raspidmx.png) and [res/charset_icons.png](res/charset_icons.png) when program starts, should only be used during development.  
+  - ``CHARSET_EXPORT`` : Export current characters set defined in [font.h](font.h) to [res/charset_raspidmx.png](res/charset_raspidmx.png) and [res/charset_icons.png](res/charset_icons.png) when program starts, should only be used during development.  
+  - ``BUFFER_PNG_EXPORT`` (D1): Allow to export bitmap buffers to PNG files (``-buffer_png_export`` argument).  
   <br>
 
 ### Examples:
@@ -81,19 +92,24 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 ### Arguments:
   (\*) : Require program to be compiled with GPIO support (please refer to Preprocessor variables section).  
   (\*\*) : Relative or full path, invalid path to fully disable.  
-  (\*\*\*) : file containing only numerical value.  
+  (\*\*\*) : File containing only numerical value.  
+  (SOMETHING) : Only available if related preprocessor variable set.  
+  (!SOMETHING) : Only available if related preprocessor NOT variable set.  
 
   - Common :
     * ``-h`` or ``-help`` : Show arguments list.  
+    * ``-display`` : Dispmanx display (0 for main screen).  
+    * ``-layer`` : Dispmanx layer (10000 by default to ensure it goes over everything else).  
+    * ``-check <1-120>`` : Main loop limits in hz, limited impact on performance.  
     * ``-debug <1-0>`` : Enable/disable stderr debug outputs.  
-    * ``-buffer_png_export`` : Export all drawn buffers to PNG files into **debug_export** folder.  
+    * ``-buffer_png_export`` (D1) : Export all drawn buffers to PNG files into **debug_export** folder.  
     <br>
   
-  - Warning icons :  
+  - Warning icons (!DS4)(!DS5) :  
     * ``-icons_pos <tl/tr/bl/br>`` : icons position on screen : Top Left,Right, Bottom Left,Right.  
     * ``-icons_height <1-100>`` : icons height in percent (relative to screen height).  
-    * ``-lowbat_test`` : Low battery icon will be displayed until program closes (for test purpose).  
-    * ``-cputemp_test`` : CPU temperature warning icon will be displayed until program closes (for test purpose).  
+    * ``-lowbat_test`` (!DS4) : Low battery icon will be displayed until program closes (for test purpose).  
+    * ``-cputemp_test`` (!DS5) : CPU temperature warning icon will be displayed until program closes (for test purpose).  
     <br>
   
   - Low battery management :  
@@ -103,37 +119,34 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
       Default: ``/sys/class/power_supply/battery/voltage_now``  
     * ``-battery_volt_divider <NUM>`` : Divider to get actual voltage (1000 for millivolts as input).  
     * ``-lowbat_limit <0-90>`` : Threshold to trigger low battery icon in percent (require valid ``-battery_rsoc`` argument path).  
-    * ``-lowbat_gpio <GPIO_PIN>`` (\*) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
-    * ``-lowbat_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
+    * ``-lowbat_gpio <GPIO_PIN>`` (\*)(!DS1) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
+    * ``-lowbat_gpio_reversed <0-1>`` (\*)(!DS1) : 0 for active high, 1 for active low.  
     <br>
 
-  - OSD display :  
-    * ``-display`` : Dispmanx display (0 for main screen).  
-    * ``-layer`` : Dispmanx layer (10000 by default to ensure it goes over everything else).  
-    * ``-timeout <1-20>`` : Hide OSD after given duration.  
-    * ``-check <1-120>`` : Main loop limits in hz, limited impact on performance.  
-    * ``-signal_file <PATH>`` (\*\*\*) : Path to signal file, useful if you can't send signal to program.  
+  - OSD display (!DS6) :  
+    * ``-osd_max_lines <1-999>`` : Absolute limit lines count on screen (15 by default).  
+    * ``-osd_text_padding <0-100>`` : Text distance (px) to screen border in pixels.  
+    * ``-signal_file <PATH>`` (\*\*\*)(!DS3) : Path to signal file, useful if you can't send signal to program.  
       Should only contain '0', SIGUSR1 or SIGUSR2 value.  
-    * ``-osd_gpio <GPIO_PIN>`` (\*) : OSD display trigger GPIO pin, set to -1 to disable.  
-    * ``-osd_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
+    * ``-osd_gpio <GPIO_PIN>`` (\*)(!DS1) : OSD display trigger GPIO pin, set to -1 to disable.  
+    * ``-osd_gpio_reversed <0-1>`` (\*)(!DS1) : 0 for active high, 1 for active low.  
     * ``-osd_test`` : full OSD will be displayed until program closes (for test purpose).  
     <br>
 
-  - OSD styling :  
+  - OSD styling (!DS6)(!DS7) :  
+    * ``-timeout <1-20>`` : Hide OSD after given duration.  
     * ``-bg_color <RGB,RGBA>`` : Background color (alpha midpoint to opaque used as background for text).  
     * ``-text_color <RGB,RGBA>`` : Text color.  
     * ``-warn_color <RGB,RGBA>`` : Warning text color.  
     * ``-crit_color <RGB,RGBA>`` : Critical text color.  
       <RGB,RGBA> uses html format (without # character), allow both 1 or 2 hex per color channel (including alpha channel).  
-    * ``-max_lines <1-999>`` : Absolute limit lines count on screen (15 by default).  
-    * ``-text_padding <0-100>`` : Text distance (px) to screen border in pixels.  
     <br>
 
-  - Header/Footer tiny OSD : 
+  - Header/Footer tiny OSD (!DS7) : 
     * ``-osd_header_position <t/b>`` : Position : Top, Bottom.  
     * ``-osd_header_height <1-100>`` : Height in percent (relative to screen height).  
-    * ``-osd_header_gpio <GPIO_PIN>`` (\*) : Display trigger GPIO pin, set to -1 to disable.  
-    * ``-osd_header_gpio_reversed <0-1>`` (\*) : 0 for active high, 1 for active low.  
+    * ``-osd_header_gpio <GPIO_PIN>`` (\*)(!DS1) : Display trigger GPIO pin, set to -1 to disable.  
+    * ``-osd_header_gpio_reversed <0-1>`` (\*)(!DS1) : 0 for active high, 1 for active low.  
     * ``-osd_header_test`` : Tiny OSD will be displayed until program closes (for test purpose).  
     <br>
 
