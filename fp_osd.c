@@ -587,20 +587,20 @@ void tinyosd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, tinyosd_buffer_ptr, &osd_rect) != 0){
-                print_stderr("failed to write dispmanx resource.\n");
+                if (debug){print_stderr("failed to write dispmanx resource.\n");}
             } else {
                 vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width << 16, osd_height << 16);
                 VC_RECT_T osd_rect_dest; vc_dispmanx_rect_set(&osd_rect_dest, x, y, width, height);
                 if (*element == 0){
                     *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer + 3, &osd_rect_dest, resource, &osd_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
-                    if (*element == 0){print_stderr("failed to add element.\n");}
+                    if (debug && *element == 0){print_stderr("failed to add element.\n");}
                 } else {
                     vc_dispmanx_element_modified(update, *element, &osd_rect_dest);
                     vc_dispmanx_element_change_attributes(update, *element, 0, 0, 0, &osd_rect_dest, 0, 0, DISPMANX_NO_ROTATE);
                 }
             }
         }
-    } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
+    } else if (debug){print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
 #endif
 
@@ -855,20 +855,20 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_buffer_ptr, &osd_rect) != 0){
-                print_stderr("failed to write dispmanx resource.\n");
+                if (debug){print_stderr("failed to write dispmanx resource.\n");}
             } else {
                 vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width << 16, osd_height << 16);
                 VC_RECT_T osd_rect_dest; vc_dispmanx_rect_set(&osd_rect_dest, x, y, width, height);
                 if (*element == 0){
                     *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer + 1, &osd_rect_dest, resource, &osd_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
-                    if (*element == 0){print_stderr("failed to add element.\n");}
+                    if (debug && *element == 0){print_stderr("failed to add element.\n");}
                 } else {
                     vc_dispmanx_element_modified(update, *element, &osd_rect_dest);
                     vc_dispmanx_element_change_attributes(update, *element, 0, 0, 0, &osd_rect_dest, 0, 0, DISPMANX_NO_ROTATE);
                 }
             }
         }
-    } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
+    } else if (debug){print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
 #endif
 
@@ -906,13 +906,13 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
 
             VC_RECT_T icon_rect; vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width, icon_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, icon_width_16 * 4, lowbat_buffer_ptr, &icon_rect) != 0){
-                print_stderr("failed to write dispmanx resource.\n");
+                if (debug){print_stderr("failed to write dispmanx resource.\n");}
             } else {
                 vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width << 16, icon_height << 16);
                 VC_RECT_T icon_rect_dest; vc_dispmanx_rect_set(&icon_rect_dest, x, y, width, height);
                 if (*element == 0){
                     *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer + 2, &icon_rect_dest, resource, &icon_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
-                    if (*element == 0){print_stderr("failed to add element.\n");}
+                    if (debug && *element == 0){print_stderr("failed to add element.\n");}
                 } else {
                     vc_dispmanx_element_modified(update, *element, &icon_rect_dest);
                     vc_dispmanx_element_change_attributes(update, *element, 0, 0, 0, &icon_rect_dest, 0, 0, DISPMANX_NO_ROTATE);
@@ -920,7 +920,7 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
             }
             y_back = y;
         }
-    } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
+    } else if (debug){print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
 #endif
 
@@ -956,13 +956,13 @@ void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
 
             VC_RECT_T icon_rect; vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width, icon_height);
             if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, icon_width_16 * 4, cputemp_buffer_ptr, &icon_rect) != 0){
-                print_stderr("failed to write dispmanx resource.\n");
+                if (debug){print_stderr("failed to write dispmanx resource.\n");}
             } else {
                 vc_dispmanx_rect_set(&icon_rect, 0, 0, icon_width << 16, icon_height << 16);
                 VC_RECT_T icon_rect_dest; vc_dispmanx_rect_set(&icon_rect_dest, x, y, width, height);
                 if (*element == 0){
                     *element = vc_dispmanx_element_add(update, dispmanx_display, osd_layer + 2, &icon_rect_dest, resource, &icon_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
-                    if (*element == 0){print_stderr("failed to add element.\n");}
+                    if (debug && *element == 0){print_stderr("failed to add element.\n");}
                 } else {
                     vc_dispmanx_element_modified(update, *element, &icon_rect_dest);
                     vc_dispmanx_element_change_attributes(update, *element, 0, 0, 0, &icon_rect_dest, 0, 0, DISPMANX_NO_ROTATE);
@@ -970,7 +970,7 @@ void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
             }
             y_back = y;
         }
-    } else {print_stderr("calloc failed.\n");} //failed to allocate buffer
+    } else if (debug){print_stderr("calloc failed.\n");} //failed to allocate buffer
 }
 #endif
 
@@ -1078,38 +1078,38 @@ void *evdev_routine(void* arg){ //evdev input thread routine
                             }
                             free(folder_list);
                             if (scan_mode){print_stderr("scan finished\n"); evdev_retry = false;}
-                        } else {print_stderr("'%s' folder is empty\n", evdev_path);}
+                        } else if (debug){print_stderr("'%s' folder is empty\n", evdev_path);}
                     } else if (S_ISREG(evdev_stat.st_mode)){ //given path is a file
                         evdev_fd = open(evdev_path, O_RDONLY);
-                        if (evdev_fd < 0){print_stderr("failed to open '%s'\n", evdev_path); //failed to open file
+                        if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path);} //failed to open file
                         } else {
                             ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
                             if (evdev_name[0] != '\0'){
                                 strncpy(evdev_path_used, evdev_path, sizeof(evdev_path_used));
                                 strncpy(evdev_name_search, evdev_name, sizeof(evdev_name_search));
-                            } else {print_stderr("failed to detect device name for '%s'\n", evdev_path); evdev_retry = false;}
+                            } else {if (debug){print_stderr("failed to detect device name for '%s'\n", evdev_path);} evdev_retry = false;}
                         }
-                    } else {print_stderr("invalid file type for '%s'\n", evdev_path); evdev_retry = false;}
-                } else {print_stderr("failed to open '%s'\n", evdev_path);}
+                    } else if (debug){print_stderr("invalid file type for '%s'\n", evdev_path); evdev_retry = false;}
+                } else if (debug){print_stderr("failed to open '%s'\n", evdev_path);}
             }
             evdev_fd = -1;
 
             if (evdev_path_used[0] != '\0'){ //"valid" device found
                 evdev_fd = open(evdev_path_used, O_RDONLY);
-                if (evdev_fd < 0){print_stderr("failed to open '%s'\n", evdev_path_used); //failed to open file
+                if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path_used);} //failed to open file
                 } else {
                     evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); //get device name
-                    if (evdev_name[0] == '\0'){print_stderr("failed to get device name for '%s'\n", evdev_path_used); close(evdev_fd); evdev_fd = -1;
+                    if (evdev_name[0] == '\0'){if (debug){print_stderr("failed to get device name for '%s'\n", evdev_path_used);} close(evdev_fd); evdev_fd = -1;
                     } else {
                         fcntl(evdev_fd, F_SETFL, fcntl(evdev_fd, F_GETFL) | O_NONBLOCK); //set fd to non blocking
-                        print_stderr("'%s' will be used for '%s' device\n", evdev_path_used, evdev_name);
+                        if (debug){print_stderr("'%s' will be used for '%s' device\n", evdev_path_used, evdev_name);}
                     }
                 }
             }
 
             if (evdev_fd == -1){
-                if (evdev_name_search[0] != '\0'){print_stderr("can't poll from '%s' device\n", evdev_name_search);}
-                if (evdev_retry){print_stderr("retry in %ds\n", evdev_check_interval);} else {print_stderr("evdev routine disabled\n"); goto thread_close;}
+                if (evdev_name_search[0] != '\0' && debug){print_stderr("can't poll from '%s' device\n", evdev_name_search);}
+                if (evdev_retry){if (debug){print_stderr("retry in %ds\n", evdev_check_interval);}} else {print_stderr("evdev routine disabled\n"); goto thread_close;}
             }
 
             recheck_start_time = loop_start_time;
@@ -1118,13 +1118,13 @@ void *evdev_routine(void* arg){ //evdev input thread routine
         if (evdev_fd != -1){
             int events_read = read(evdev_fd, &events, events_size);
             if (errno == ENODEV || errno == ENOENT || errno == EBADF){
-                print_stderr("failed to read from device '%s' (%s), try to reopen in %ds\n", evdev_name_search, evdev_path_used, evdev_check_interval);
+                if (debug){print_stderr("failed to read from device '%s' (%s), try to reopen in %ds\n", evdev_name_search, evdev_path_used, evdev_check_interval);}
                 close(evdev_fd); evdev_fd = -1; continue;
             } else if (events_read >= input_event_size){
                 if (evdev_detected_start > 0. && loop_start_time - evdev_detected_start > evdev_sequence_detect_interval){ //reset sequence
                     memset(evdev_detected_sequence, 0, sizeof(evdev_detected_sequence));
                     evdev_detected_sequence_index = 0; evdev_detected_start = -1.;
-                    print_stderr("sequence timer reset\n");
+                    if (debug){print_stderr("sequence timer reset\n");}
                 }
 
                 for (int i = 0; i < events_read / input_event_size; i++){
@@ -1142,10 +1142,13 @@ void *evdev_routine(void* arg){ //evdev input thread routine
                     #endif
 
                     if (tmp_code != 0 && events[i].value != 0 && (code_osd_detect || code_tinyosd_detect)){ //keycode in osd or tiny osd sequence
-                        if (evdev_detected_start < 0){evdev_detected_start = loop_start_time; print_stderr("sequence timer start\n");} //check not started
+                        if (evdev_detected_start < 0){ //check not started
+                            evdev_detected_start = loop_start_time;
+                            if (debug){print_stderr("sequence timer start\n");}
+                        }
                         if (loop_start_time - evdev_detected_start < evdev_sequence_detect_interval && in_array_int(evdev_detected_sequence, tmp_code, evdev_sequence_max * 2) == -1){ //still in detection interval and not in detected sequence
                             evdev_detected_sequence[evdev_detected_sequence_index++] = tmp_code;
-                            print_stderr("%d added to detected sequence\n", tmp_code);
+                            if (debug){print_stderr("%d added to detected sequence\n", tmp_code);}
                         }
                     }
                 }
@@ -1156,7 +1159,7 @@ void *evdev_routine(void* arg){ //evdev input thread routine
                 #ifndef NO_OSD
                 for (int i = 0; i < osd_evdev_sequence_limit; i++){if (osd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, osd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check osd trigger
                 if (tmp_detected_count == osd_evdev_sequence_limit){
-                    print_stderr("osd triggered\n");
+                    if (debug){print_stderr("osd triggered\n");}
                     osd_start_time = loop_start_time;
                     evdev_detected_start = 1.;
                 } else {
@@ -1165,7 +1168,7 @@ void *evdev_routine(void* arg){ //evdev input thread routine
                 #ifndef NO_TINYOSD
                     for (int i = 0; i < tinyosd_evdev_sequence_limit; i++){if (tinyosd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, tinyosd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check tiny osd trigger
                     if (tmp_detected_count == tinyosd_evdev_sequence_limit){
-                        print_stderr("tiny osd triggered\n");
+                        if (debug){print_stderr("tiny osd triggered\n");}
                         tinyosd_start_time = loop_start_time;
                         evdev_detected_start = 1.;
                     }

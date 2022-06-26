@@ -116,7 +116,7 @@ static void program_usage(void); //display help
 //generic
 const char program_version[] = "0.1a"; //program version
 const char dev_webpage[] = "https://github.com/TheFlav/Freeplay_OSD"; //dev website
-bool debug = true, kill_requested = false, already_killed = false;
+bool kill_requested = false, already_killed = false;
 char program_path[PATH_MAX] = {'\0'}, program_name[PATH_MAX] = {'\0'}; //full path to this program
 char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
 

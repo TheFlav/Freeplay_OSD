@@ -1,0 +1,19 @@
+[Unit]
+Description=Freeplay OSD for Freeplaytech Zero 2 (new version) device
+After=basic.target
+#After=meadiacenter.service
+
+[Service]
+# If User and Group are not specified, then by default systemd ExecStart runs as root
+User=pi
+Group=pi
+Type=simple
+ExecStart=/home/pi/Freeplay/Freeplay_OSD/fp_osd -evdev_osd_sequence 0x13c,0x136,0x137 -evdev_tinyosd_sequence 0x13c,0x138,0x139 -osd_gpio -1 -tinyosd_gpio -1
+TimeoutStartSec=0
+# write to journal or within script to separate log file
+# StandardOutput=/home/pi/Freeplay/Freeplay_OSD/fp_osd-freeplayzero2-out.log
+# StandardError=/home/pi/Freeplay/Freeplay_OSD/fp_osd-freeplayzero2-err.log
+# Restart=always
+
+[Install]
+WantedBy=multi-user.target

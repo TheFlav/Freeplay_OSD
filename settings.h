@@ -5,6 +5,8 @@ User settings file.
 Please refer to fp_osd.h and fp_osd.c for more informations.
 */
 
+bool debug = false;
+
 //dispmanx
 int display_number = 0; //dispmanx display num
 int osd_layer = 10000; //dispmanx first layer
