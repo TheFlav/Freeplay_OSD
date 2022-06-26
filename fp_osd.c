@@ -16,11 +16,13 @@ Very early version, still under developpement.
 
 Require libpng-dev, zlib1g-dev, libraspberrypi-dev(?).
 Depending of wanted GPIO support (if so): wiringpi, libgpiod-dev.
-Note on wiringpi: You may need to clone and compile for unofficial github repository as official WiringPi ended development, please refer to: https://github.com/PinkFreud/WiringPi
+Note on wiringpi: You may need to clone and compile for unofficial github repository as official WiringPi ended development, please refer to https://github.com/PinkFreud/WiringPi
+Require libpthread-stubs0-dev to allow compilation with event input support.
 
 Credits goes where its due:
 - This project is inspirated by Retropie-open-OSD (https://github.com/vascofazza/Retropie-open-OSD).
 - Contain modified version of drawStringRGB(), drawCharRGB(), setPixelRGB(), loadPng(), savePng() functions and font charset from Raspidmx (https://github.com/AndrewFromMelbourne/raspidmx).
+- Event device input code partially based on evtest program by Vojtech Pavlik.
 */
 
 #include "fp_osd.h"

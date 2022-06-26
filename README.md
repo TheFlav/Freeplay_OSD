@@ -14,8 +14,9 @@ Currently tested on Pi3, Zero 2.
 Keeping documentation up-to-date during development cycle is pretty difficult, a few things may be outdated or not properly documented (even not)... Sorry about that.  
 
 Credits goes where its due:
-- This project is inspirated by Retropie-open-OSD project (https://github.com/vascofazza/Retropie-open-OSD).
-- Contain modified code from Raspidmx project (https://github.com/AndrewFromMelbourne/raspidmx).  
+- This project is inspirated by [Retropie-open-OSD](https://github.com/vascofazza/Retropie-open-OSD).  
+- Contain modified code from [Raspidmx](https://github.com/AndrewFromMelbourne/raspidmx).  
+- Event device input code partially based on **evtest** program by Vojtech Pavlik.  
 <br>
   
 ## Preview:
@@ -34,7 +35,7 @@ Credits goes where its due:
   - ``libpng-dev``, ``zlib1g-dev``, ``libraspberrypi-dev``.
   - ``wiringpi`` : please refer to ``USE_WIRINGPI``.
   - ``libgpiod-dev`` : please refer to ``USE_GPIOD``.  
-  - ``libpthread-dev`` : only if ``NO_EVDEV`` preprocessor variable not set.  
+  - ``libpthread-stubs0-dev`` : only if ``NO_EVDEV`` preprocessor variable not set.  
 <br>
 
 ### Preprocessor variables (gcc -D) to enable features:
@@ -309,13 +310,14 @@ sudo systemctl stop fp_osd.service
 <br><br>
 
 ## Repository files
+- [scripts/](scripts/) : Contain sample scripts to install/remove services to run program as daemon.
 - [service_sample/](service_sample/) : Contain sample service files to run program as daemon.
 - [res/](res/) : Contain resources linked to the program like icons and other.
 - [font.h](font.h) : Bitmap font from Raspidmx project.
 - [fp_osd.h](fp_osd.h)/[fp_osd.c](fp_osd.c) : OSD program.
 - [settings.h](settings.h) : User settings, mostly settable with program arguments.
 - [compile.sh](compile.sh) : Sample script to compile program.
-- [osd.sh](osd.sh)/[osdbar.sh](osdbar.sh) : Sample script to send signal to OSD program.
+- [osd.sh](osd.sh)/[tinyosd.sh](tinyosd.sh) : Sample script to send signal to OSD program.
 <br><br>
   
 ## Missing features
