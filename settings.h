@@ -18,6 +18,23 @@ int osd_check_rate = 30; //osd check rate in hz
     char signal_path[PATH_MAX] = {'\0'}; //full path to signal file, invalid to disable
 #endif
 
+//evdev
+#ifndef NO_EVDEV
+    int evdev_check_interval = 10; //recheck interval if event detection failed in seconds
+    char evdev_path[PATH_MAX] = "/dev/input/"; //event device path, will search for evdev_name if folder provided
+    char evdev_name_search[255] = "Freeplay Gamepad 0"; //event device name to search
+
+    //input sequence to detect
+    int evdev_sequence_detect_interval_ms = 200; //max interval between first and last input detected in milliseconds
+    #define evdev_sequence_max 5 //maximum keys to detect at once for a osd version
+    #ifndef NO_OSD
+        char osd_evdev_sequence_char[1024] = "0x13c,0x136,0x137"; //each key separated by ',' charater, For reference: https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/input-event-codes.h
+    #endif
+    #ifndef NO_TINYOSD
+        char tinyosd_evdev_sequence_char[1024] = "0x13c,0x138,0x139"; //each key separated by ',' charater, For reference: https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/input-event-codes.h
+    #endif
+#endif
+
 //OSD
 #ifndef NO_GPIO
     int osd_gpio = -1; //gpio pin, -1 to disable
@@ -34,12 +51,12 @@ char osd_color_crit_str[9] = "ff5548"/*"EB3324"*/; uint32_t osd_color_crit = 0; 
 
 //tiny OSD
 #ifndef NO_GPIO
-    int osd_header_gpio = -1; //gpio pin, -1 to disable
-    bool osd_header_gpio_reversed = false; //gpio pin active low
+    int tinyosd_gpio = -1; //gpio pin, -1 to disable
+    bool tinyosd_gpio_reversed = false; //gpio pin active low
 #endif
 #ifndef NO_TINYOSD
-    int osd_header_height_percent = 5; //height percent relative to screen height
-    char osd_header_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
+    int tinyosd_height_percent = 5; //height percent relative to screen height
+    char tinyosd_pos_str[2] = "t"; //raw osd position, t,b. Real position computed at runtime
 #endif
 
 //warning icons

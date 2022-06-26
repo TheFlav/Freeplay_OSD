@@ -34,12 +34,13 @@ Credits goes where its due:
   - ``libpng-dev``, ``zlib1g-dev``, ``libraspberrypi-dev``.
   - ``wiringpi`` : please refer to ``USE_WIRINGPI``.
   - ``libgpiod-dev`` : please refer to ``USE_GPIOD``.  
+  - ``libpthread-dev`` : only if ``NO_EVDEV`` preprocessor variable not set.  
 <br>
 
 ### Preprocessor variables (gcc -D) to enable features:
 - GPIO library support:
   - Only one kind of library will be allowed at once.
-  - You can also disable gpio with program argument ``-lowbat_gpio -1``, ``-osd_gpio -1``, ``-osd_header_gpio -1`` or set [settings.h](settings.h) 'lowbat_gpio', 'osd_gpio', 'osd_header_gpio' variables to -1.
+  - You can also disable gpio with program argument ``-lowbat_gpio -1``, ``-osd_gpio -1``, ``-tinyosd_gpio -1`` or set [settings.h](settings.h) 'lowbat_gpio', 'osd_gpio', 'tinyosd_gpio' variables to -1.
   - Program will fall back on ``raspi-gpio`` program if library fails and at least one GPIO pin not disabled (user will have to set pins to input mode on there own in this case).  
 
   - ``USE_WIRINGPI``
@@ -54,14 +55,16 @@ Credits goes where its due:
     * **Important note**: Will fail if one GPIO pin already used by another program.  
   <br>
 
-- Disable specific features:
-  - ``NO_GPIO`` : (DS1) : Fully disable all GPIO related features.  
-  - ``NO_SIGNAL`` : (DS2) : Ignore ``SIGUSR1`` and ``SIGUSR2`` signal to trigger OSD.  
-  - ``NO_SIGNAL_FILE`` : (DS3) : Disable OSD trigger using file.  
-  - ``NO_BATTERY_ICON`` : (DS4) : Disable low battery warning icon.  
-  - ``NO_CPU_ICON`` : (DS5) : Disable CPU overheat warning icon.  
-  - ``NO_OSD`` : (DS6) : Disable full screen OSD.  
-  - ``NO_TINYOSD`` : (DS7) : Disable Tiny OSD.  
+- Fully disable specific features:
+  - (\*) : will be set by default if ``NO_OSD`` and ``NO_TINYOSD`` both set.
+  - ``NO_GPIO`` : Fully disable all GPIO related features.  
+  - ``NO_SIGNAL`` (\*) : Ignore ``SIGUSR1`` and ``SIGUSR2`` signal to trigger OSD.  
+  - ``NO_SIGNAL_FILE`` (\*) : Disable OSD trigger using file.  
+  - ``NO_EVDEV`` (\*) : Disable OSD trigger using input event device, ``-lpthread`` in compilation command line not needed in this case.  
+  - ``NO_BATTERY_ICON`` : Disable low battery warning icon.  
+  - ``NO_CPU_ICON`` : Disable CPU overheat warning icon.  
+  - ``NO_OSD`` : Disable full screen OSD.  
+  - ``NO_TINYOSD`` : Disable Tiny OSD.  
   <br>
 
 - Debug specific:
@@ -74,17 +77,17 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 
   - WiringPi support  
     ```
-    gcc -DUSE_WIRINGPI -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lwiringPi
+    gcc -DUSE_WIRINGPI -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lpthread -lwiringPi
     ```
 
   - libGPIOd support  
     ```
-    gcc -DUSE_GPIOD -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lgpiod
+    gcc -DUSE_GPIOD -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lpthread -lgpiod
     ```
 
   - No GPIO library support  
     ```
-    gcc -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/
+    gcc -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lpthread
     ```
 <br>
 
@@ -105,11 +108,11 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-buffer_png_export`` (D1) : Export all drawn buffers to PNG files into **debug_export** folder.  
     <br>
   
-  - Warning icons (!DS4)(!DS5) :  
+  - Warning icons (!NO_BATTERY_ICON)(!NO_CPU_ICON) :  
     * ``-icons_pos <tl/tr/bl/br>`` : icons position on screen : Top Left,Right, Bottom Left,Right.  
     * ``-icons_height <1-100>`` : icons height in percent (relative to screen height).  
-    * ``-lowbat_test`` (!DS4) : Low battery icon will be displayed until program closes (for test purpose).  
-    * ``-cputemp_test`` (!DS5) : CPU temperature warning icon will be displayed until program closes (for test purpose).  
+    * ``-lowbat_test`` (!NO_BATTERY_ICON) : Low battery icon will be displayed until program closes (for test purpose).  
+    * ``-cputemp_test`` (!NO_CPU_ICON) : CPU temperature warning icon will be displayed until program closes (for test purpose).  
     <br>
   
   - Low battery management :  
@@ -119,21 +122,30 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
       Default: ``/sys/class/power_supply/battery/voltage_now``  
     * ``-battery_volt_divider <NUM>`` : Divider to get actual voltage (1000 for millivolts as input).  
     * ``-lowbat_limit <0-90>`` : Threshold to trigger low battery icon in percent (require valid ``-battery_rsoc`` argument path).  
-    * ``-lowbat_gpio <GPIO_PIN>`` (\*)(!DS1) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
-    * ``-lowbat_gpio_reversed <0-1>`` (\*)(!DS1) : 0 for active high, 1 for active low.  
+    * ``-lowbat_gpio <GPIO_PIN>`` (\*)(!NO_GPIO) : Low battery GPIO pin (usually triggered by a PMIC or Gauge IC), set to -1 to disable.  
+    * ``-lowbat_gpio_reversed <0-1>`` (\*)(!NO_GPIO) : 0 for active high, 1 for active low.  
     <br>
 
-  - OSD display (!DS6) :  
+  - EVDEV input (!NO_EVDEV), please refer to ``Event device input`` section for more informations :
+    * ``-evdev_path <PATH>`` (\*\*) : Folder or file to use as input device (``/dev/input/`` by default).  
+    * ``-evdev_device <NAME>`` : Device to search if ``-evdev_path`` argument is a folder.  
+    * ``-evdev_failure_interval <NUM>`` : Retry interval if input device failed (10 by default).  
+    * ``-evdev_detect_interval <NUM>`` : Input sequence detection timeout in millisec (200 by default).  
+    * ``-evdev_osd_sequence <KEYCODE,KEYCODE,...>`` (!NO_OSD) : OSD trigger sequence (``0x13c,0x136,0x137`` by default).  
+    * ``-evdev_tinyosd_sequence <KEYCODE,KEYCODE,...>`` (!NO_TINYOSD) : Tiny OSD trigger sequence (``0x13c,0x138,0x139`` by default).  
+    <br>
+
+  - OSD display (!NO_OSD) :  
     * ``-osd_max_lines <1-999>`` : Absolute limit lines count on screen (15 by default).  
     * ``-osd_text_padding <0-100>`` : Text distance (px) to screen border in pixels.  
-    * ``-signal_file <PATH>`` (\*\*\*)(!DS3) : Path to signal file, useful if you can't send signal to program.  
+    * ``-signal_file <PATH>`` (\*\*)(\*\*\*)(!NO_SIGNAL_FILE) : Path to signal file, useful if you can't send signal to program.  
       Should only contain '0', SIGUSR1 or SIGUSR2 value.  
-    * ``-osd_gpio <GPIO_PIN>`` (\*)(!DS1) : OSD display trigger GPIO pin, set to -1 to disable.  
-    * ``-osd_gpio_reversed <0-1>`` (\*)(!DS1) : 0 for active high, 1 for active low.  
+    * ``-osd_gpio <GPIO_PIN>`` (\*)(!NO_GPIO) : OSD display trigger GPIO pin, set to -1 to disable.  
+    * ``-osd_gpio_reversed <0-1>`` (\*)(!NO_GPIO) : 0 for active high, 1 for active low.  
     * ``-osd_test`` : full OSD will be displayed until program closes (for test purpose).  
     <br>
 
-  - OSD styling (!DS6)(!DS7) :  
+  - OSD styling (!NO_OSD)(!NO_TINYOSD) :  
     * ``-timeout <1-20>`` : Hide OSD after given duration.  
     * ``-bg_color <RGB,RGBA>`` : Background color (alpha midpoint to opaque used as background for text).  
     * ``-text_color <RGB,RGBA>`` : Text color.  
@@ -142,12 +154,12 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
       <RGB,RGBA> uses html format (without # character), allow both 1 or 2 hex per color channel (including alpha channel).  
     <br>
 
-  - Header/Footer tiny OSD (!DS7) : 
-    * ``-osd_header_position <t/b>`` : Position : Top, Bottom.  
-    * ``-osd_header_height <1-100>`` : Height in percent (relative to screen height).  
-    * ``-osd_header_gpio <GPIO_PIN>`` (\*)(!DS1) : Display trigger GPIO pin, set to -1 to disable.  
-    * ``-osd_header_gpio_reversed <0-1>`` (\*)(!DS1) : 0 for active high, 1 for active low.  
-    * ``-osd_header_test`` : Tiny OSD will be displayed until program closes (for test purpose).  
+  - Header/Footer Tiny OSD (!NO_TINYOSD) : 
+    * ``-tinyosd_position <t/b>`` : Position : Top, Bottom.  
+    * ``-tinyosd_height <1-100>`` : Height in percent (relative to screen height).  
+    * ``-tinyosd_gpio <GPIO_PIN>`` (\*)(!NO_GPIO) : Display trigger GPIO pin, set to -1 to disable.  
+    * ``-tinyosd_gpio_reversed <0-1>`` (\*)(!NO_GPIO) : 0 for active high, 1 for active low.  
+    * ``-tinyosd_test`` : Tiny OSD will be displayed until program closes (for test purpose).  
     <br>
 
   - OSD data :  
@@ -165,7 +177,7 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
   - Depending on how program is configured, Full and Tiny OSD can be triggered multiple ways:
     * Signal sent to the program: ``SIGUSR1`` for Full OSD and ``SIGUSR2`` for Tiny OSD.  
     * File on the system (set with ``-signal_file <PATH>`` argument), contenting numeric value of ``SIGUSR1`` or ``SIGUSR2`` (file content is reset to "0" once triggered).  
-    * GPIO pin set with ``-osd_gpio <PIN>`` argument for Full OSD (``-osd_gpio_reversed <0-1>`` to set LOW or HIGH trigger) and ``-osd_header_gpio <PIN>`` argument for Tiny OSD (``-osd_header_gpio_reversed <0-1>`` to set LOW or HIGH trigger).  
+    * GPIO pin set with ``-osd_gpio <PIN>`` argument for Full OSD (``-osd_gpio_reversed <0-1>`` to set LOW or HIGH trigger) and ``-tinyosd_gpio <PIN>`` argument for Tiny OSD (``-tinyosd_gpio_reversed <0-1>`` to set LOW or HIGH trigger).  
   
 
   
@@ -250,6 +262,17 @@ If file is invalid, icon will never be displayed.
   - Critical color is based on ``-crit_color <RGB,RGBA>`` argument.
 <br><br>
 
+## Event device input:
+- Require valid folder or file (``-evdev_path <PATH>`` argument).
+- Depending on folder/file rights, you may need to run program with ``sudo``.
+- Because of input event file naming, it is highly recommended to leave as is (``/dev/input/`` by default) and use ``-evdev_device <NAME>`` argument to provide proper device name as controller could be for example named ``event0`` in one instance and ``event1`` in another one.
+- OSD trigger sequence (``-evdev_osd_sequence`` argument) and Tiny OSD trigger sequence (``-evdev_tinyosd_sequence`` argument):
+  * Allow interger or hex keycode numbering (sould be compatible with any kind of input device).
+  * Please refer to [input-event-codes.h](https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/input-event-codes.h) to found proper key numbers.
+  * Hardcoded limit of 5 keycode per sequence, can be changed with ``evdev_sequence_max`` variable in [settings.h](settings.h).
+  * Each keycode separated by ``,`` character (e.g. ``"0x13c,0x136,0x137"`` for ``BTN_MODE``, ``BTN_TL`` and ``BTN_TR``	combination).
+<br><br>
+
 ## Service files
 - **Notes:**
   - Files located in [service_sample/](service_sample/) folder, these are provided as example.
@@ -298,6 +321,7 @@ sudo systemctl stop fp_osd.service
 ## Missing features
 Section to be considered as a pseudo todo.  
 - Allow OSD trigger using EVDEV.
+- Proper program output to avoid log spam.
 - Full/Tiny OSD rework.
 <br><br>
 

@@ -5,6 +5,16 @@ Main header file.
 Please refer to fp_osd.c for more informations.
 */
 
+//#define NO_GPIO 1 //debug
+//#define NO_SIGNAL 1 //debug
+//#define NO_SIGNAL_FILE 1 //debug
+//#define NO_EVDEV 1 //debug
+//#define BUFFER_PNG_EXPORT 1 //debug
+//#define NO_OSD 1 //debug
+//#define NO_TINYOSD 1 //debug
+//#define NO_BATTERY_ICON 1 //debug
+//#define NO_CPU_ICON 1 //debug
+
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -23,14 +33,15 @@ Please refer to fp_osd.c for more informations.
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
-//#define NO_GPIO 1 //debug
-//#define NO_SIGNAL 1 //debug
-//#define NO_SIGNAL_FILE 1 //debug
-//#define BUFFER_PNG_EXPORT 1 //debug
-//#define NO_OSD 1 //debug
-//#define NO_TINYOSD 1 //debug
-//#define NO_BATTERY_ICON 1 //debug
-//#define NO_CPU_ICON 1 //debug
+#if defined(NO_OSD) && defined(NO_TINYOSD)
+    #define NO_EVDEV 1
+    #define NO_SIGNAL 1
+    #define NO_SIGNAL_FILE 1
+#endif
+#ifndef NO_EVDEV
+    #include <linux/input.h>
+    #include <dirent.h>
+#endif
 
 #include "settings.h" //user settings vars
 
@@ -96,6 +107,11 @@ static void program_close(void); //regroup all close functs
 static void program_get_path(char** /*args*/, char* /*path*/, char* /*program*/); //get current program path based on program argv or getcwd if failed
 static void program_usage(void); //display help
 
+#ifndef NO_EVDEV
+    int in_array_int(int* /*arr*/, int /*value*/, int /*arr_size*/); //search in value in int array, return index or -1 on failure
+    void *evdev_routine(void* /*arg*/); //evdev input thread routine
+#endif
+
 
 //generic
 const char program_version[] = "0.1a"; //program version
@@ -113,7 +129,15 @@ char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
 double program_start_time = .0; //used for print output
 #if !(defined(NO_OSD) && defined(NO_TINYOSD))
     double osd_start_time = -1.; //osd start time
-    double osd_header_start_time = -1.; //tiny osd start time
+    double tinyosd_start_time = -1.; //tiny osd start time
+#endif
+
+//evdev thread specific
+#ifndef NO_EVDEV
+    pthread_t evdev_thread = 0; //event detection thread
+    bool evdev_thread_started = false; //event detection thread is running
+    char evdev_path_used[PATH_MAX] = ""; //event device path used, done that way to allow disconnect and reconnect of controller without failing evdev routine
+    double evdev_sequence_detect_interval = 0.; //max interval between first and last input detected in seconds, defined during runtime
 #endif
 
 //cpu data
@@ -132,8 +156,8 @@ int32_t battery_rsoc = -1, battery_rsoc_last = -2; //current battery percentage
 #ifndef NO_GPIO
     bool gpio_external = false; //use external program to read gpio state
     bool gpio_enabled[gpio_pins_count] = {0}; //use gpio triggers, leave as is, defined during runtime
-    int *gpio_pin[gpio_pins_count] = {&lowbat_gpio, &osd_gpio, &osd_header_gpio}; //gpio pins, leave as is, defined during runtime
-    bool *gpio_reversed[gpio_pins_count] = {&lowbat_gpio_reversed, &osd_gpio_reversed, &osd_header_gpio_reversed}; //gpio signal reversed, leave as is, defined during runtime
+    int *gpio_pin[gpio_pins_count] = {&lowbat_gpio, &osd_gpio, &tinyosd_gpio}; //gpio pins, leave as is, defined during runtime
+    bool *gpio_reversed[gpio_pins_count] = {&lowbat_gpio_reversed, &osd_gpio_reversed, &tinyosd_gpio_reversed}; //gpio signal reversed, leave as is, defined during runtime
 #endif
 
 //bitmap buffers
@@ -141,7 +165,7 @@ int32_t battery_rsoc = -1, battery_rsoc_last = -2; //current battery percentage
     void *osd_buffer_ptr = NULL; //bitmap buffer pointer
 #endif
 #ifndef NO_TINYOSD
-    void *osd_header_buffer_ptr = NULL; //bitmap buffer pointer
+    void *tinyosd_buffer_ptr = NULL; //bitmap buffer pointer
 #endif
 #ifndef NO_BATTERY_ICON
     void *lowbat_buffer_ptr = NULL; //bitmap buffer pointer

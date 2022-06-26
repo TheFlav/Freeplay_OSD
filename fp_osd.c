@@ -414,14 +414,14 @@ static bool cputemp_sysfs(void){ //read sysfs cpu temperature, return true if th
 
 //osd related
 #ifndef NO_TINYOSD
-void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
-    if (osd_header_buffer_ptr == NULL){
-        print_stderr("creating header osd bitmap buffer.\n");
-        osd_header_buffer_ptr = calloc(1, osd_width * osd_height * 4);
-        if (osd_header_buffer_ptr != NULL){buffer_fill(osd_header_buffer_ptr, osd_width, osd_height, osd_color_bg);} //buffer reset
+void tinyosd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
+    if (tinyosd_buffer_ptr == NULL){
+        print_stderr("creating tiny osd bitmap buffer.\n");
+        tinyosd_buffer_ptr = calloc(1, osd_width * osd_height * 4);
+        if (tinyosd_buffer_ptr != NULL){buffer_fill(tinyosd_buffer_ptr, osd_width, osd_height, osd_color_bg);} //buffer reset
     }
 
-    if (osd_header_buffer_ptr != NULL){ //valid bitmap buffer
+    if (tinyosd_buffer_ptr != NULL){ //valid bitmap buffer
         char buffer[256] = {'\0'}; FILE *filehandle;
         bool draw_update = false;
         uint32_t text_column_left = 0, text_column_right = osd_width;
@@ -469,13 +469,13 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
         }
 
         if (draw_update){ //redraw
-            buffer_fill(osd_header_buffer_ptr, osd_width, osd_height, osd_color_bg); //buffer reset
+            buffer_fill(tinyosd_buffer_ptr, osd_width, osd_height, osd_color_bg); //buffer reset
 
             //clock: right side (done first because buffer)
             text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
-            raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, osd_color_text, NULL);
+            raspidmx_drawStringRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, osd_color_text, NULL);
             text_column_right -= RASPIDMX_FONT_WIDTH;
-            raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
+            raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
 
             //battery: left side
             double batt_voltage = -1.;
@@ -491,9 +491,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                 } else if (batt_voltage < 0.){sprintf(buffer, "%3d%%", battery_rsoc); //invalid voltage, rsoc only
                 } else {sprintf(buffer, "%3d%% %.2lfv", battery_rsoc, batt_voltage);} //both
 
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 7, osd_icon_font_ptr, tmp_color/*, NULL*/) + 2; //battery icon
-                text_column_left = raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL).x;
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
+                text_column_left = raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left, 0, 7, osd_icon_font_ptr, tmp_color/*, NULL*/) + 2; //battery icon
+                text_column_left = raspidmx_drawStringRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL).x;
+                text_column_left = raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
             }
 
             //cpu: left side
@@ -507,9 +507,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                     sprintf(buffer, "%dC %3d%%", cputemp_curr, cpu_load);
                 } else {sprintf(buffer, "%3d%%", cpu_load);}
 
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 2, osd_icon_font_ptr, tmp_color/*, NULL*/) + 2; //cpu icon
-                text_column_left = raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL).x;
-                text_column_left = raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
+                text_column_left = raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left, 0, 2, osd_icon_font_ptr, tmp_color/*, NULL*/) + 2; //cpu icon
+                text_column_left = raspidmx_drawStringRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left, 0, buffer, raspidmx_font_ptr, tmp_color, NULL).x;
+                text_column_left = raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
             }
 
             //backlight: right side
@@ -521,11 +521,11 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                 } else {sprintf(buffer, "%.0lf%%", ((double)backlight/backlight_max)*100);}
 
                 text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
-                raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, osd_color_text, NULL);
+                raspidmx_drawStringRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, osd_color_text, NULL);
                 text_column_right -= RASPIDMX_FONT_WIDTH + 2;
-                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 8, osd_icon_font_ptr, osd_color_text/*, NULL*/); //backlight icon
+                raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, 8, osd_icon_font_ptr, osd_color_text/*, NULL*/); //backlight icon
                 text_column_right -= RASPIDMX_FONT_WIDTH;
-                raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
+                raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
             }
 
             //wifi:right side
@@ -559,9 +559,9 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                     sprintf(buffer, "%d", wifi_speed);
 
                     text_column_right -= 2 * RASPIDMX_FONT_WIDTH;
-                    raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, "\5\6", osd_icon_font_ptr, tmp_color, NULL);
+                    raspidmx_drawStringRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, "\5\6", osd_icon_font_ptr, tmp_color, NULL);
                     text_column_right -= strlen(buffer) * RASPIDMX_FONT_WIDTH;
-                    raspidmx_drawStringRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, tmp_color, NULL);
+                    raspidmx_drawStringRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, buffer, raspidmx_font_ptr, tmp_color, NULL);
 
                     if (wifi_signal > 0){
                         tmp_color = osd_color_text;
@@ -569,24 +569,24 @@ void osd_header_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                     }
 
                     text_column_right -= RASPIDMX_FONT_WIDTH + 2;
-                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 4, osd_icon_font_ptr, tmp_color/*, NULL*/); //wifi icon
+                    raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, 4, osd_icon_font_ptr, tmp_color/*, NULL*/); //wifi icon
                     text_column_right -= RASPIDMX_FONT_WIDTH;
-                    raspidmx_drawCharRGBA32(osd_header_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
+                    raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_right, 0, 1, osd_icon_font_ptr, osd_color_separator/*, NULL*/); //separator
                 }
             }
 
             //line between left and right separator
-            buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, text_column_left - RASPIDMX_FONT_WIDTH/2, text_column_right + RASPIDMX_FONT_WIDTH/2, osd_height/2 - 1, osd_color_separator); 
+            buffer_horizontal_line(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left - RASPIDMX_FONT_WIDTH/2, text_column_right + RASPIDMX_FONT_WIDTH/2, osd_height/2 - 1, osd_color_separator); 
 
             //horizontal break line
-            buffer_horizontal_line(osd_header_buffer_ptr, osd_width, osd_height, 0, osd_width, (y == 0)?osd_height-1:0, osd_color_separator); 
+            buffer_horizontal_line(tinyosd_buffer_ptr, osd_width, osd_height, 0, osd_width, (y == 0)?osd_height-1:0, osd_color_separator); 
 
             #ifdef BUFFER_PNG_EXPORT
-                if (debug_buffer_png_export){buffer_png_export(osd_header_buffer_ptr, osd_width, osd_height, "debug_export/tiny_osd.png");} //debug png export
+                if (debug_buffer_png_export){buffer_png_export(tinyosd_buffer_ptr, osd_width, osd_height, "debug_export/tiny_osd.png");} //debug png export
             #endif
 
             VC_RECT_T osd_rect; vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width, osd_height);
-            if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, osd_header_buffer_ptr, &osd_rect) != 0){
+            if (vc_dispmanx_resource_write_data(resource, VC_IMAGE_RGBA32, osd_width * 4, tinyosd_buffer_ptr, &osd_rect) != 0){
                 print_stderr("failed to write dispmanx resource.\n");
             } else {
                 vc_dispmanx_rect_set(&osd_rect, 0, 0, osd_width << 16, osd_height << 16);
@@ -982,6 +982,212 @@ int int_constrain(int* val, int min, int max){ //limit int value to given (incl)
 }
 
 
+//evdev functs
+#ifndef NO_EVDEV
+int in_array_int(int* arr, int value, int arr_size){ //search in value in int array, return index or -1 on failure
+    for (int i=0; i < arr_size; i++) {if (arr[i] == value) {return i;}}
+    return -1;
+}
+
+void *evdev_routine(void* arg){ //evdev input thread routine
+    if (evdev_path[0] == '\0'){print_stderr("empty event device path, evdev routine disabled\n"); goto thread_close;}
+
+    //input sequence spliting
+    int osd_evdev_sequence_limit = 0;
+    int tinyosd_evdev_sequence_limit = 0;
+
+    #ifndef NO_OSD
+        int osd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
+        if (osd_evdev_sequence_char[0] != '\0'){
+            print_stderr("osd sequence: ");
+            int index = 0;
+            char buffer[strlen(osd_evdev_sequence_char) + 1]; strcpy(buffer, osd_evdev_sequence_char);
+            char *tmp_ptr = strtok(buffer, ","); //split element
+            while (tmp_ptr != NULL){
+                if (strchr(tmp_ptr, 'x') == NULL){osd_evdev_sequence[index] = atoi(tmp_ptr);} else {sscanf(tmp_ptr, "0x%X", &osd_evdev_sequence[index]);} //int or hex value
+                fprintf(stderr, "%d ", osd_evdev_sequence[index]); index++;
+                if (index >= evdev_sequence_max){break;} //avoid overflow
+                tmp_ptr = strtok(NULL, ","); //next element
+            }
+            osd_evdev_sequence_limit = index;
+            fprintf(stderr, "(%d)\n", index);
+        }
+    #endif
+
+    #ifndef NO_TINYOSD
+        int tinyosd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
+        if (tinyosd_evdev_sequence_char[0] != '\0'){
+            print_stderr("tiny osd sequence: ");
+            int index = 0;
+            char buffer[strlen(tinyosd_evdev_sequence_char) + 1]; strcpy(buffer, tinyosd_evdev_sequence_char);
+            char *tmp_ptr = strtok(buffer, ","); //split element
+            while (tmp_ptr != NULL){
+                if (strchr(tmp_ptr, 'x') == NULL){tinyosd_evdev_sequence[index] = atoi(tmp_ptr);} else {sscanf(tmp_ptr, "0x%X", &tinyosd_evdev_sequence[index]);} //int or hex value
+                fprintf(stderr, "%d ", tinyosd_evdev_sequence[index]); index++;
+                if (index >= evdev_sequence_max){break;} //avoid overflow
+                tmp_ptr = strtok(NULL, ","); //next element
+            }
+            tinyosd_evdev_sequence_limit = index;
+            fprintf(stderr, "(%d)\n", index);
+        }
+    #endif
+
+    if (osd_evdev_sequence_limit == 0 && tinyosd_evdev_sequence_limit == 0){print_stderr("no valid event sequence detected, evdev routine disabled\n"); goto thread_close;}
+
+    //remove trailing '/' from event path
+    int evdev_path_len = strlen(evdev_path);
+    if (evdev_path_len > 1 && evdev_path[evdev_path_len - 1] == '/'){evdev_path[evdev_path_len - 1] = '\0'; evdev_path_len--;}
+
+    //event input
+    int evdev_fd = -1;
+    double update_interval = 1. / osd_check_rate, recheck_start_time = -1.;
+    double evdev_detected_start = -1.; //time of first detected input
+    #define input_event_count 64 //absolute limit simultanious event report
+    struct input_event events[input_event_count];
+    int input_event_size = (int) sizeof(struct input_event), events_size = input_event_size * input_event_count;
+    int evdev_detected_sequence[evdev_sequence_max * 2] = {0}; //list of detect sequence (incl osd and tiny osd)
+    int evdev_detected_sequence_index = 0;
+
+    evdev_sequence_detect_interval = (double)evdev_sequence_detect_interval_ms / 1000.;
+
+    while (!kill_requested){ //thread main loop
+        double loop_start_time = get_time_double(); //loop start time
+
+        if (evdev_fd == -1 && loop_start_time - recheck_start_time > (double)evdev_check_interval){ //device has failed or not started
+            bool evdev_retry = true;
+            char evdev_name[255] = ""; //store temporary device name
+            if (evdev_path_used[0] == '\0'){ //initial device detection
+                struct stat evdev_stat;
+                if (stat(evdev_path, &evdev_stat) == 0){
+                    if (S_ISDIR(evdev_stat.st_mode)){ //given path is a folder, scan for proper event file
+                        struct dirent **folder_list;
+                        int folder_files = scandir(evdev_path, &folder_list, 0, 0);
+                        if (folder_files != -1){
+                            bool scan_mode = evdev_name_search[0] == '\0';
+                            if (scan_mode){print_stderr("no event device name provided, falling back to scan mode\n");}
+                            for (int i = 0; i < folder_files; i++){
+                                char* evdev_file_tmp = folder_list[i]->d_name;
+                                char evdev_path_tmp[evdev_path_len + strlen(evdev_file_tmp) + 2]; sprintf(evdev_path_tmp, "%s/%s", evdev_path, evdev_file_tmp);
+                                evdev_fd = open(evdev_path_tmp, O_RDONLY);
+                                if (evdev_fd < 0){continue;} //failed to open file
+                                evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
+                                if (evdev_name[0] != '\0'){
+                                    if (scan_mode){print_stderr("'%s' : '%s'\n", evdev_path_tmp, evdev_name); //no device name provided, just output all devices and paths
+                                    } else if (strcmp(evdev_name_search, evdev_name) == 0){strncpy(evdev_path_used, evdev_path_tmp, sizeof(evdev_path_used)); break;} //proper device found
+                                }
+                            }
+                            free(folder_list);
+                            if (scan_mode){print_stderr("scan finished\n"); evdev_retry = false;}
+                        } else {print_stderr("'%s' folder is empty\n", evdev_path);}
+                    } else if (S_ISREG(evdev_stat.st_mode)){ //given path is a file
+                        evdev_fd = open(evdev_path, O_RDONLY);
+                        if (evdev_fd < 0){print_stderr("failed to open '%s'\n", evdev_path); //failed to open file
+                        } else {
+                            ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
+                            if (evdev_name[0] != '\0'){
+                                strncpy(evdev_path_used, evdev_path, sizeof(evdev_path_used));
+                                strncpy(evdev_name_search, evdev_name, sizeof(evdev_name_search));
+                            } else {print_stderr("failed to detect device name for '%s'\n", evdev_path); evdev_retry = false;}
+                        }
+                    } else {print_stderr("invalid file type for '%s'\n", evdev_path); evdev_retry = false;}
+                } else {print_stderr("failed to open '%s'\n", evdev_path);}
+            }
+            evdev_fd = -1;
+
+            if (evdev_path_used[0] != '\0'){ //"valid" device found
+                evdev_fd = open(evdev_path_used, O_RDONLY);
+                if (evdev_fd < 0){print_stderr("failed to open '%s'\n", evdev_path_used); //failed to open file
+                } else {
+                    evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); //get device name
+                    if (evdev_name[0] == '\0'){print_stderr("failed to get device name for '%s'\n", evdev_path_used); close(evdev_fd); evdev_fd = -1;
+                    } else {
+                        fcntl(evdev_fd, F_SETFL, fcntl(evdev_fd, F_GETFL) | O_NONBLOCK); //set fd to non blocking
+                        print_stderr("'%s' will be used for '%s' device\n", evdev_path_used, evdev_name);
+                    }
+                }
+            }
+
+            if (evdev_fd == -1){
+                if (evdev_name_search[0] != '\0'){print_stderr("can't poll from '%s' device\n", evdev_name_search);}
+                if (evdev_retry){print_stderr("retry in %ds\n", evdev_check_interval);} else {print_stderr("evdev routine disabled\n"); goto thread_close;}
+            }
+
+            recheck_start_time = loop_start_time;
+        }
+
+        if (evdev_fd != -1){
+            int events_read = read(evdev_fd, &events, events_size);
+            if (errno == ENODEV || errno == ENOENT || errno == EBADF){
+                print_stderr("failed to read from device '%s' (%s), try to reopen in %ds\n", evdev_name_search, evdev_path_used, evdev_check_interval);
+                close(evdev_fd); evdev_fd = -1; continue;
+            } else if (events_read >= input_event_size){
+                if (evdev_detected_start > 0. && loop_start_time - evdev_detected_start > evdev_sequence_detect_interval){ //reset sequence
+                    memset(evdev_detected_sequence, 0, sizeof(evdev_detected_sequence));
+                    evdev_detected_sequence_index = 0; evdev_detected_start = -1.;
+                    print_stderr("sequence timer reset\n");
+                }
+
+                for (int i = 0; i < events_read / input_event_size; i++){
+                    //printf("%ld.%06ld, type:%u, code:%u, value:%d\n", events[i].time.tv_sec, events[i].time.tv_usec, events[i].type, events[i].code, events[i].value);
+                    int tmp_code = events[i].code;
+                    #ifndef NO_OSD
+                        bool code_osd_detect = (osd_evdev_sequence_limit == 0) ? false : in_array_int(osd_evdev_sequence, tmp_code, osd_evdev_sequence_limit) != -1;
+                    #else
+                        bool code_osd_detect = false;
+                    #endif
+                    #ifndef NO_TINYOSD
+                        bool code_tinyosd_detect = (tinyosd_evdev_sequence_limit == 0) ? false : in_array_int(tinyosd_evdev_sequence, tmp_code, tinyosd_evdev_sequence_limit) != -1;
+                    #else
+                        bool code_tinyosd_detect = false;
+                    #endif
+
+                    if (tmp_code != 0 && events[i].value != 0 && (code_osd_detect || code_tinyosd_detect)){ //keycode in osd or tiny osd sequence
+                        if (evdev_detected_start < 0){evdev_detected_start = loop_start_time; print_stderr("sequence timer start\n");} //check not started
+                        if (loop_start_time - evdev_detected_start < evdev_sequence_detect_interval && in_array_int(evdev_detected_sequence, tmp_code, evdev_sequence_max * 2) == -1){ //still in detection interval and not in detected sequence
+                            evdev_detected_sequence[evdev_detected_sequence_index++] = tmp_code;
+                            print_stderr("%d added to detected sequence\n", tmp_code);
+                        }
+                    }
+                }
+
+                #if !(defined(NO_OSD) && defined(NO_TINYOSD))
+                int tmp_detected_count = 0;
+                #endif
+                #ifndef NO_OSD
+                for (int i = 0; i < osd_evdev_sequence_limit; i++){if (osd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, osd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check osd trigger
+                if (tmp_detected_count == osd_evdev_sequence_limit){
+                    print_stderr("osd triggered\n");
+                    osd_start_time = loop_start_time;
+                    evdev_detected_start = 1.;
+                } else {
+                    tmp_detected_count = 0;
+                #endif
+                #ifndef NO_TINYOSD
+                    for (int i = 0; i < tinyosd_evdev_sequence_limit; i++){if (tinyosd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, tinyosd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check tiny osd trigger
+                    if (tmp_detected_count == tinyosd_evdev_sequence_limit){
+                        print_stderr("tiny osd triggered\n");
+                        tinyosd_start_time = loop_start_time;
+                        evdev_detected_start = 1.;
+                    }
+                #endif
+                #ifndef NO_OSD
+                }
+                #endif
+            }
+        }
+
+        double loop_end_time = get_time_double();
+        if (loop_end_time - loop_start_time < update_interval){usleep((useconds_t) ((update_interval - (loop_end_time - loop_start_time)) * 1000000.));} //limit update rate
+    }
+
+    thread_close:;
+    if (evdev_fd != -1){close(evdev_fd);} //close opened fd
+    print_stderr("thread closed\n"); evdev_thread_started = false; pthread_cancel(evdev_thread); //close thread
+    return NULL;
+}
+#endif
+
+
 //generic
 static bool html_to_uint32_color(char* html_color, uint32_t* rgba){ //convert html color (3/4 or 6/8 hex) to uint32_t (alpha, blue, green, red)
     int len = strlen(html_color);
@@ -1015,7 +1221,7 @@ static void tty_signal_handler(int sig){ //handle signal func
         #endif
     } else if (sig == SIGUSR2){
         #if !defined(NO_SIGNAL) && !defined(NO_TINYOSD)
-            osd_header_start_time = get_time_double(); //header osd
+            tinyosd_start_time = get_time_double(); //tiny osd
         #endif
     } else {kill_requested = true;}
 }
@@ -1028,7 +1234,7 @@ static void program_close(void){ //regroup all close functs
         if (osd_buffer_ptr != NULL){free(osd_buffer_ptr); osd_buffer_ptr = NULL;} //free osd buffer
     #endif
     #ifndef NO_TINYOSD
-        if (osd_header_buffer_ptr != NULL){free(osd_header_buffer_ptr); osd_header_buffer_ptr = NULL;} //free osd header buffer
+        if (tinyosd_buffer_ptr != NULL){free(tinyosd_buffer_ptr); tinyosd_buffer_ptr = NULL;} //free tiny osd buffer
     #endif
     #ifndef NO_BATTERY_ICON
         if (lowbat_buffer_ptr != NULL){free(lowbat_buffer_ptr); lowbat_buffer_ptr = NULL;} //free low batt buffer
@@ -1094,6 +1300,21 @@ static void program_usage(void){ //display help
     , lowbat_gpio, lowbat_gpio_reversed?1:0);
 #endif
 
+#ifndef NO_EVDEV
+    fprintf(stderr,"\nEVDEV input:\n"
+    "\t-evdev_path <PATH> (folder or file to use as input device. Default:'%s').\n"
+    "\t-evdev_device <NAME> (device to search if -evdev_path is a folder. Default:'%s').\n"
+    "\t-evdev_failure_interval <NUM> (retry interval if input device failed. Default:'%d').\n"
+    "\t-evdev_detect_interval <NUM> (input sequence detection timeout in millisec. Default:'%d').\n"
+    , evdev_path, evdev_name_search, evdev_check_interval, evdev_sequence_detect_interval_ms);
+#ifndef NO_OSD
+    fprintf(stderr,"\t-evdev_osd_sequence <KEYCODE,KEYCODE,...> (OSD trigger sequence. Default:'%s').\n", osd_evdev_sequence_char);
+#endif
+#ifndef NO_TINYOSD
+    fprintf(stderr,"\t-evdev_tinyosd_sequence <KEYCODE,KEYCODE,...> (Tiny OSD trigger sequence. Default:'%s').\n", tinyosd_evdev_sequence_char);
+#endif
+#endif
+
 #ifndef NO_OSD
     fprintf(stderr,
     "\nOSD display:\n"
@@ -1129,16 +1350,16 @@ static void program_usage(void){ //display help
 
 #ifndef NO_TINYOSD
     fprintf(stderr,
-    "\nHeader OSD specific:\n"
-    "\t-osd_header_test (Tiny OSD display, for test purpose).\n"
-    "\t-osd_header_position <t/b> (top, bottom. Default:%s).\n"
-    "\t-osd_header_height <1-100> (OSD height, percent of screen height. Default:%d).\n"
-    , osd_header_pos_str, osd_header_height_percent);
+    "\tTiny OSD specific:\n"
+    "\t-tinyosd_test (Tiny OSD display, for test purpose).\n"
+    "\t-tinyosd_position <t/b> (top, bottom. Default:%s).\n"
+    "\t-tinyosd_height <1-100> (OSD height, percent of screen height. Default:%d).\n"
+    , tinyosd_pos_str, tinyosd_height_percent);
     #ifndef NO_GPIO
     fprintf(stderr,
-    "\t-osd_header_gpio <PIN> (OSD trigger gpio pin, -1 to disable. Default:%d).\n"
-    "\t-osd_header_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
-    , osd_header_gpio, osd_header_gpio_reversed?1:0);
+    "\t-tinyosd_gpio <PIN> (OSD trigger gpio pin, -1 to disable. Default:%d).\n"
+    "\t-tinyosd_gpio_reversed <0-1> (1 for active low. Default:%d).\n"
+    , tinyosd_gpio, tinyosd_gpio_reversed?1:0);
     #endif
 #endif
 
@@ -1174,7 +1395,7 @@ int main(int argc, char *argv[]){
         bool osd_test = false;
     #endif
     #ifndef NO_TINYOSD
-        bool osd_header_test = false;
+        bool tinyosd_test = false;
     #endif
     #ifndef NO_BATTERY_ICON
         bool lowbat_test = false;
@@ -1214,6 +1435,20 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-lowbat_gpio_reversed") == 0){lowbat_gpio_reversed = atoi(argv[++i]) > 0;
 #endif
 
+        //EVDEV input
+#ifndef NO_EVDEV
+        } else if (strcmp(argv[i], "-evdev_path") == 0){strncpy(evdev_path, argv[++i], sizeof(evdev_path));
+        } else if (strcmp(argv[i], "-evdev_device") == 0){strncpy(evdev_name_search, argv[++i], sizeof(evdev_name_search));
+        } else if (strcmp(argv[i], "-evdev_failure_interval") == 0){evdev_check_interval = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-evdev_detect_interval") == 0){evdev_sequence_detect_interval_ms = atoi(argv[++i]);
+    #ifndef NO_OSD
+        } else if (strcmp(argv[i], "-evdev_osd_sequence") == 0){strncpy(osd_evdev_sequence_char, argv[++i], sizeof(osd_evdev_sequence_char));
+    #endif
+    #ifndef NO_TINYOSD
+        } else if (strcmp(argv[i], "-evdev_tinyosd_sequence") == 0){strncpy(tinyosd_evdev_sequence_char, argv[++i], sizeof(tinyosd_evdev_sequence_char));
+    #endif
+#endif
+
         //OSD display
 #ifndef NO_OSD
         } else if (strcmp(argv[i], "-osd_test") == 0){osd_test = true; print_stderr("full OSD will be displayed until program closes\n");
@@ -1242,13 +1477,13 @@ int main(int argc, char *argv[]){
 
         //Tiny OSD specific
 #ifndef NO_TINYOSD
-        } else if (strcmp(argv[i], "-osd_header_test") == 0){osd_header_test = true; print_stderr("tiny OSD will be displayed until program closes\n");
-        } else if (strcmp(argv[i], "-osd_header_position") == 0){strncpy(osd_header_pos_str, argv[++i], sizeof(osd_header_pos_str));
-        } else if (strcmp(argv[i], "-osd_header_height") == 0){osd_header_height_percent = atoi(argv[++i]);
-            if (int_constrain(&osd_header_height_percent, 1, 100) != 0){print_stderr("invalid -osd_header_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", osd_header_height_percent);}
+        } else if (strcmp(argv[i], "-tinyosd_test") == 0){tinyosd_test = true; print_stderr("tiny OSD will be displayed until program closes\n");
+        } else if (strcmp(argv[i], "-tinyosd_position") == 0){strncpy(tinyosd_pos_str, argv[++i], sizeof(tinyosd_pos_str));
+        } else if (strcmp(argv[i], "-tinyosd_height") == 0){tinyosd_height_percent = atoi(argv[++i]);
+            if (int_constrain(&tinyosd_height_percent, 1, 100) != 0){print_stderr("invalid -tinyosd_height argument, reset to '%d', allow from '1' to '100' (incl.)\n", tinyosd_height_percent);}
     #ifndef NO_GPIO
-        } else if (strcmp(argv[i], "-osd_header_gpio") == 0){osd_header_gpio = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "-osd_header_gpio_reversed") == 0){osd_header_gpio_reversed = atoi(argv[++i]) > 0;
+        } else if (strcmp(argv[i], "-tinyosd_gpio") == 0){tinyosd_gpio = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-tinyosd_gpio_reversed") == 0){tinyosd_gpio_reversed = atoi(argv[++i]) > 0;
     #endif
 #endif
 
@@ -1294,13 +1529,19 @@ int main(int argc, char *argv[]){
     signal(SIGTERM, tty_signal_handler); //SIGTERM from htop or other, SIGKILL not work as program get killed before able to handle
     signal(SIGABRT, tty_signal_handler); //failure
     signal(SIGUSR1, tty_signal_handler); //use signal SIGUSR1 as trigger to display full OSD
-    signal(SIGUSR2, tty_signal_handler); //use signal SIGUSR2 as trigger to display header OSD
+    signal(SIGUSR2, tty_signal_handler); //use signal SIGUSR2 as trigger to display tiny OSD
     atexit(program_close); at_quick_exit(program_close); //run on program exit
+
     #ifdef NO_SIGNAL
         print_stderr("osd trigger using signal disabled at compilation time.\n");
     #endif
     #ifdef NO_SIGNAL_FILE
         print_stderr("osd trigger using file disabled at compilation time.\n");
+    #endif
+    #ifndef NO_EVDEV
+        evdev_thread_started = pthread_create(&evdev_thread, NULL, evdev_routine, NULL) == 0; //create evdev routine thread
+    #else
+        print_stderr("osd trigger using evdev disabled at compilation time.\n");
     #endif
 
     //bcm init
@@ -1349,7 +1590,7 @@ int main(int argc, char *argv[]){
     }
 
     #ifndef NO_GPIO //gpio
-        if (lowbat_gpio > -1 || osd_gpio > -1 || osd_header_gpio > -1){gpio_init();}
+        if (lowbat_gpio > -1 || osd_gpio > -1 || tinyosd_gpio > -1){gpio_init();}
     #else
         print_stderr("gpio features disabled at compilation time.\n");
     #endif
@@ -1410,15 +1651,15 @@ int main(int argc, char *argv[]){
         print_stderr("full screen osd disabled at compilation time.\n");
     #endif
 
-    //osd header
+    //tiny osd
     #ifndef NO_TINYOSD
-        int osd_header_y = 0, osd_header_height_dest = (double)display_height * ((double)osd_header_height_percent / 100);
-        double osd_header_downsizing = (double)osd_header_height_dest / RASPIDMX_FONT_HEIGHT;
-        int osd_header_width = ALIGN_TO_16((int)((double)display_width / osd_header_downsizing)), osd_header_height = ALIGN_TO_16(RASPIDMX_FONT_HEIGHT);
-        print_stderr("osd header resolution: %dx%d (%.4lf)\n", osd_header_width, osd_header_height, osd_header_downsizing);
-        DISPMANX_ELEMENT_HANDLE_T osd_header_element = 0;
-        DISPMANX_RESOURCE_HANDLE_T osd_header_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_header_width, osd_header_height, &vc_image_ptr);
-        if (osd_header_resource > 0 && osd_header_pos_str[0]=='b'){osd_header_y = display_height - osd_header_height_dest;} //footer alignment
+        int tinyosd_y = 0, tinyosd_height_dest = (double)display_height * ((double)tinyosd_height_percent / 100);
+        double tinyosd_downsizing = (double)tinyosd_height_dest / RASPIDMX_FONT_HEIGHT;
+        int tinyosd_width = ALIGN_TO_16((int)((double)display_width / tinyosd_downsizing)), tinyosd_height = ALIGN_TO_16(RASPIDMX_FONT_HEIGHT);
+        print_stderr("tiny osd resolution: %dx%d (%.4lf)\n", tinyosd_width, tinyosd_height, tinyosd_downsizing);
+        DISPMANX_ELEMENT_HANDLE_T tinyosd_element = 0;
+        DISPMANX_RESOURCE_HANDLE_T tinyosd_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, tinyosd_width, tinyosd_height, &vc_image_ptr);
+        if (tinyosd_resource > 0 && tinyosd_pos_str[0]=='b'){tinyosd_y = display_height - tinyosd_height_dest;} //footer alignment
     #else
         print_stderr("tiny osd disabled at compilation time.\n");
     #endif
@@ -1437,17 +1678,17 @@ int main(int argc, char *argv[]){
         double loop_start_time = get_time_double(); //loop start time
         dispmanx_update = vc_dispmanx_update_start(0); //start vc update
         #if !defined(NO_SIGNAL_FILE) && !(defined(NO_OSD) && defined(NO_TINYOSD))
-            if (!signal_file_used && signal_path[0] != '\0' && access(signal_path, R_OK) && osd_start_time < 0. && osd_header_start_time < 0.){ //check signal file value
+            if (!signal_file_used && signal_path[0] != '\0' && access(signal_path, R_OK) && osd_start_time < 0. && tinyosd_start_time < 0.){ //check signal file value
                 int tmp_sig = 0; FILE *filehandle = fopen(signal_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &tmp_sig); fclose(filehandle);}
                 if (tmp_sig == SIGUSR1){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
-                } else if (tmp_sig == SIGUSR2){osd_header_start_time = loop_start_time; signal_file_used = true;} //header osd
+                } else if (tmp_sig == SIGUSR2){tinyosd_start_time = loop_start_time; signal_file_used = true;} //tiny osd
             }
         #endif
 
         if (loop_start_time - gpio_check_start_time > 0.25){ //check gpio 4 times a sec
             #if !defined(NO_GPIO) && !(defined(NO_OSD) && defined(NO_TINYOSD))
                 if (osd_start_time < 0 && gpio_check(1)){osd_start_time = loop_start_time;} //osd gpio trigger
-                if (osd_header_start_time < 0 && gpio_check(2)){osd_header_start_time = loop_start_time;} //tiny osd gpio trigger
+                if (tinyosd_start_time < 0 && gpio_check(2)){tinyosd_start_time = loop_start_time;} //tiny osd gpio trigger
             #endif
             if (loop_start_time - sec_check_start_time > 1.){ //warning trigger every seconds
                 #if !defined(NO_GPIO) && !defined(NO_BATTERY_ICON)
@@ -1481,24 +1722,24 @@ int main(int argc, char *argv[]){
                         if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                     #endif
                     osd_start_time = -1.;
-                } else if (osd_header_start_time < 0){ //only if header osd not displayed
+                } else if (tinyosd_start_time < 0){ //only if tiny osd not displayed
                     osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
                 }
             }
         #endif
 
-        //header osd
+        //tiny osd
         #ifndef NO_TINYOSD
-            if (osd_header_test){osd_header_start_time = loop_start_time;}
-            if (osd_header_resource > 0 && osd_header_start_time > 0){
-                if (loop_start_time - osd_header_start_time > (double)osd_timeout){ //osd timeout
-                    if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element); osd_header_element = 0;}
+            if (tinyosd_test){tinyosd_start_time = loop_start_time;}
+            if (tinyosd_resource > 0 && tinyosd_start_time > 0){
+                if (loop_start_time - tinyosd_start_time > (double)osd_timeout){ //osd timeout
+                    if (tinyosd_element > 0){vc_dispmanx_element_remove(dispmanx_update, tinyosd_element); tinyosd_element = 0;}
                     #ifndef NO_SIGNAL_FILE
                         if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                     #endif
-                    osd_header_start_time = -1.;
-                } else if (osd_start_time < 0 || osd_header_test){ //only if full osd not displayed
-                    osd_header_build_element(osd_header_resource, &osd_header_element, dispmanx_update, osd_header_width, osd_header_height, 0, osd_header_y, display_width, osd_header_height_dest);
+                    tinyosd_start_time = -1.;
+                } else if (osd_start_time < 0 || tinyosd_test){ //only if full osd not displayed
+                    tinyosd_build_element(tinyosd_resource, &tinyosd_element, dispmanx_update, tinyosd_width, tinyosd_height, 0, tinyosd_y, display_width, tinyosd_height_dest);
                 }
             }
         #endif
@@ -1574,7 +1815,7 @@ int main(int argc, char *argv[]){
         if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element);} //remove osd
     #endif
     #ifndef NO_TINYOSD
-        if (osd_header_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_header_element);} //remove tiny osd
+        if (tinyosd_element > 0){vc_dispmanx_element_remove(dispmanx_update, tinyosd_element);} //remove tiny osd
     #endif
     vc_dispmanx_update_submit_sync(dispmanx_update); //push vc update
     #ifndef NO_BATTERY_ICON
@@ -1587,7 +1828,7 @@ int main(int argc, char *argv[]){
         if (osd_resource > 0){vc_dispmanx_resource_delete(osd_resource);}
     #endif
     #ifndef NO_TINYOSD
-        if (osd_header_resource > 0){vc_dispmanx_resource_delete(osd_header_resource);}
+        if (tinyosd_resource > 0){vc_dispmanx_resource_delete(tinyosd_resource);}
     #endif
 
     //gpiod
