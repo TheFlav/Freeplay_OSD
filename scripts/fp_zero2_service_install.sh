@@ -15,13 +15,13 @@ fi
 
 echo "### Installing required libraries ###"
 sudo apt update
-sudo apt install -y libpng-dev zlib1g-dev libraspberrypi-dev wiringpi libgpiod-dev libpthread-stubs0-dev
+sudo apt install -y libpng-dev zlib1g-dev libraspberrypi-dev wiringpi
 
 echo "### Compiling program ###"
 if [ -f "../fp_osd" ]; then
     sudo rm ../fp_osd
 fi
-gcc -DUSE_WIRINGPI -DNO_SIGNAL_FILE -DNO_SIGNAL -o ../fp_osd ../fp_osd.c -l:libpng.a -l:libz.a -l:libm.a -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lpthread -lwiringPi
+gcc -DUSE_WIRINGPI -DNO_SIGNAL_FILE -DNO_SIGNAL -o ../fp_osd ../fp_osd.c -l:libpng.a -l:libz.a -l:libm.a -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lwiringPi
 
 if [ -f "../fp_osd" ]; then
     echo "### Installing service files ###"
