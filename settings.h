@@ -24,7 +24,7 @@ int osd_check_rate = 30; //osd check rate in hz
 #ifndef NO_EVDEV
     int evdev_check_interval = 10; //recheck interval if event detection failed in seconds
     char evdev_path[PATH_MAX] = "/dev/input/"; //event device path, will search for evdev_name if folder provided
-    char evdev_name_search[255] = "Freeplay Gamepad 0"; //event device name to search
+    char evdev_name_search[255] = "Controller Name"; //event device name to search
 
     //input sequence to detect
     int evdev_sequence_detect_interval_ms = 200; //max interval between first and last input detected in milliseconds

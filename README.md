@@ -32,10 +32,9 @@ Credits goes where its due:
   
 ## Compilation:
 ### Required libraries
-  - ``libpng-dev``, ``zlib1g-dev``, ``libraspberrypi-dev``.
-  - ``wiringpi`` : please refer to ``USE_WIRINGPI``.
+  - ``libpng-dev``, ``zlib1g-dev``, ``libraspberrypi-dev``.  
+  - ``wiringpi`` : please refer to ``USE_WIRINGPI``.  
   - ``libgpiod-dev`` : please refer to ``USE_GPIOD``.  
-  - ``libpthread-stubs0-dev`` : only if ``NO_EVDEV`` preprocessor variable not set.  
 <br>
 
 ### Preprocessor variables (gcc -D) to enable features:
@@ -61,7 +60,7 @@ Credits goes where its due:
   - ``NO_GPIO`` : Fully disable all GPIO related features.  
   - ``NO_SIGNAL`` (\*) : Ignore ``SIGUSR1`` and ``SIGUSR2`` signal to trigger OSD.  
   - ``NO_SIGNAL_FILE`` (\*) : Disable OSD trigger using file.  
-  - ``NO_EVDEV`` (\*) : Disable OSD trigger using input event device, ``-lpthread`` in compilation command line not needed in this case.  
+  - ``NO_EVDEV`` (\*) : Disable OSD trigger using input event device.  
   - ``NO_BATTERY_ICON`` : Disable low battery warning icon.  
   - ``NO_CPU_ICON`` : Disable CPU overheat warning icon.  
   - ``NO_OSD`` : Disable full screen OSD.  
@@ -78,17 +77,17 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 
   - WiringPi support  
     ```
-    gcc -DUSE_WIRINGPI -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lpthread -lwiringPi
+    gcc -DUSE_WIRINGPI -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lwiringPi
     ```
 
   - libGPIOd support  
     ```
-    gcc -DUSE_GPIOD -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lpthread -lgpiod
+    gcc -DUSE_GPIOD -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lgpiod
     ```
 
   - No GPIO library support  
     ```
-    gcc -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/ -lpthread
+    gcc -o fp_osd fp_osd.c -lpng -lbcm_host -L/opt/vc/lib/ -I/opt/vc/include/
     ```
 <br>
 
@@ -265,6 +264,7 @@ If file is invalid, icon will never be displayed.
 
 ## Event device input:
 - Require valid folder or file (``-evdev_path <PATH>`` argument).
+- If folder is provided, files starting with a dot will be ignored.
 - Depending on folder/file rights, you may need to run program with ``sudo``.
 - Because of input event file naming, it is highly recommended to leave as is (``/dev/input/`` by default) and use ``-evdev_device <NAME>`` argument to provide proper device name as controller could be for example named ``event0`` in one instance and ``event1`` in another one.
 - OSD trigger sequence (``-evdev_osd_sequence`` argument) and Tiny OSD trigger sequence (``-evdev_tinyosd_sequence`` argument):
@@ -322,12 +322,11 @@ sudo systemctl stop fp_osd.service
   
 ## Missing features
 Section to be considered as a pseudo todo.  
-- Allow OSD trigger using EVDEV.
-- Proper program output to avoid log spam.
-- Full/Tiny OSD rework.
+- optimize EVDEV, Full/Tiny OSD.
 <br><br>
 
 ## Known issue(s)
 - Program closes if receiving undefined signal (into program code).  
 - In very rare instances, when program closes, a float exception can happen.  
+- Specific to EVDEV: If controller detected once, disconnected then reconnected and its event filename changes, program will not be able to recover until its restart (program).  
 <br><br>

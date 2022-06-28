@@ -46,7 +46,7 @@ static double get_time_double(void){ //get time in double (seconds), takes aroun
 
 //debug
 #ifdef CHARSET_EXPORT
-void charset_export_png(void){ //charset to png export, limited from char 0 to 255
+static void charset_export_png(void){ //charset to png export, limited from char 0 to 255
     #define charset_count 2
     uint32_t char_limit[charset_count] = {256, osd_icon_char_count};
     uint8_t* font_ptr[charset_count] = {raspidmx_font_ptr, osd_icon_font_ptr};
@@ -416,7 +416,7 @@ static bool cputemp_sysfs(void){ //read sysfs cpu temperature, return true if th
 
 //osd related
 #ifndef NO_TINYOSD
-void tinyosd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
+static void tinyosd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     if (tinyosd_buffer_ptr == NULL){
         print_stderr("creating tiny osd bitmap buffer.\n");
         tinyosd_buffer_ptr = calloc(1, osd_width * osd_height * 4);
@@ -607,7 +607,7 @@ void tinyosd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
 #endif
 
 #ifndef NO_OSD
-void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
+static void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t osd_width, uint32_t osd_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     if (osd_buffer_ptr == NULL){
         print_stderr("creating osd bitmap buffer.\n");
         osd_buffer_ptr = calloc(1, osd_width * osd_height * 4);
@@ -875,7 +875,7 @@ void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HAN
 #endif
 
 #ifndef NO_BATTERY_ICON
-void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
+static void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     uint32_t icon_width_16 = ALIGN_TO_16(icon_width), icon_height_16 = ALIGN_TO_16(icon_height);
 
     if (lowbat_buffer_ptr == NULL){
@@ -927,7 +927,7 @@ void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
 #endif
 
 #ifndef NO_CPU_ICON
-void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
+static void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT_HANDLE_T *element, DISPMANX_UPDATE_HANDLE_T update, uint32_t icon_width, uint32_t icon_height, uint32_t x, uint32_t y, uint32_t width, uint32_t height){
     uint32_t icon_width_16 = ALIGN_TO_16(icon_width), icon_height_16 = ALIGN_TO_16(icon_height);
 
     if (cputemp_buffer_ptr == NULL){
@@ -977,7 +977,7 @@ void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEMENT
 #endif
 
 //integer manipulation functs
-int int_constrain(int* val, int min, int max){ //limit int value to given (incl) min and max value, return 0 if val within min and max, -1 under min, 1 over max
+static int int_constrain(int* val, int min, int max){ //limit int value to given (incl) min and max value, return 0 if val within min and max, -1 under min, 1 over max
     int ret = 0;
     if (*val < min){*val = min; ret = -1;} else if (*val > max){*val = max; ret = 1;}
     return ret;
@@ -986,21 +986,22 @@ int int_constrain(int* val, int min, int max){ //limit int value to given (incl)
 
 //evdev functs
 #ifndef NO_EVDEV
-int in_array_int(int* arr, int value, int arr_size){ //search in value in int array, return index or -1 on failure
+static int in_array_int(int* arr, int value, int arr_size){ //search in value in int array, return index or -1 on failure
     for (int i=0; i < arr_size; i++) {if (arr[i] == value) {return i;}}
     return -1;
 }
 
-void *evdev_routine(void* arg){ //evdev input thread routine
-    if (evdev_path[0] == '\0'){print_stderr("empty event device path, evdev routine disabled\n"); goto thread_close;}
+void evdev_check(double loop_start_time){ //evdev input check
+    static bool evdev_init = false;
+    if (evdev_path[0] == '\0'){print_stderr("empty event device path, evdev disabled\n"); evdev_enabled = false; return;}
 
     //input sequence spliting
-    int osd_evdev_sequence_limit = 0;
-    int tinyosd_evdev_sequence_limit = 0;
+    static int osd_evdev_sequence_limit = 0;
+    static int tinyosd_evdev_sequence_limit = 0;
 
     #ifndef NO_OSD
-        int osd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
-        if (osd_evdev_sequence_char[0] != '\0'){
+        static int osd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
+        if (!evdev_init && osd_evdev_sequence_char[0] != '\0'){
             print_stderr("osd sequence: ");
             int index = 0;
             char buffer[strlen(osd_evdev_sequence_char) + 1]; strcpy(buffer, osd_evdev_sequence_char);
@@ -1017,8 +1018,8 @@ void *evdev_routine(void* arg){ //evdev input thread routine
     #endif
 
     #ifndef NO_TINYOSD
-        int tinyosd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
-        if (tinyosd_evdev_sequence_char[0] != '\0'){
+        static int tinyosd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
+        if (!evdev_init && tinyosd_evdev_sequence_char[0] != '\0'){
             print_stderr("tiny osd sequence: ");
             int index = 0;
             char buffer[strlen(tinyosd_evdev_sequence_char) + 1]; strcpy(buffer, tinyosd_evdev_sequence_char);
@@ -1034,161 +1035,153 @@ void *evdev_routine(void* arg){ //evdev input thread routine
         }
     #endif
 
-    if (osd_evdev_sequence_limit == 0 && tinyosd_evdev_sequence_limit == 0){print_stderr("no valid event sequence detected, evdev routine disabled\n"); goto thread_close;}
-
-    //remove trailing '/' from event path
-    int evdev_path_len = strlen(evdev_path);
-    if (evdev_path_len > 1 && evdev_path[evdev_path_len - 1] == '/'){evdev_path[evdev_path_len - 1] = '\0'; evdev_path_len--;}
+    if (osd_evdev_sequence_limit == 0 && tinyosd_evdev_sequence_limit == 0){print_stderr("no valid event sequence detected, evdev disabled\n"); evdev_enabled = false; return;}
 
     //event input
-    int evdev_fd = -1;
-    double update_interval = 1. / osd_check_rate, recheck_start_time = -1.;
-    double evdev_detected_start = -1.; //time of first detected input
+    static int evdev_path_len;
+    static double evdev_sequence_detect_interval; //max interval between first and last input detected in seconds, defined during runtime
+    static double recheck_start_time = -1., evdev_detected_start = -1.; //time of first detected input
     #define input_event_count 64 //absolute limit simultanious event report
-    struct input_event events[input_event_count];
-    int input_event_size = (int) sizeof(struct input_event), events_size = input_event_size * input_event_count;
-    int evdev_detected_sequence[evdev_sequence_max * 2] = {0}; //list of detect sequence (incl osd and tiny osd)
-    int evdev_detected_sequence_index = 0;
+    static struct input_event events[input_event_count];
+    static int input_event_size, events_size;
+    static int evdev_detected_sequence[evdev_sequence_max * 2] = {0}, evdev_detected_sequence_index = 0; //list of detect sequence (incl osd and tiny osd)
 
-    evdev_sequence_detect_interval = (double)evdev_sequence_detect_interval_ms / 1000.;
-
-    while (!kill_requested){ //thread main loop
-        double loop_start_time = get_time_double(); //loop start time
-
-        if (evdev_fd == -1 && loop_start_time - recheck_start_time > (double)evdev_check_interval){ //device has failed or not started
-            bool evdev_retry = true;
-            char evdev_name[255] = ""; //store temporary device name
-            if (evdev_path_used[0] == '\0'){ //initial device detection
-                struct stat evdev_stat;
-                if (stat(evdev_path, &evdev_stat) == 0){
-                    if (S_ISDIR(evdev_stat.st_mode)){ //given path is a folder, scan for proper event file
-                        struct dirent **folder_list;
-                        int folder_files = scandir(evdev_path, &folder_list, 0, 0);
-                        if (folder_files != -1){
-                            bool scan_mode = evdev_name_search[0] == '\0';
-                            if (scan_mode){print_stderr("no event device name provided, falling back to scan mode\n");}
-                            for (int i = 0; i < folder_files; i++){
-                                char* evdev_file_tmp = folder_list[i]->d_name;
-                                char evdev_path_tmp[evdev_path_len + strlen(evdev_file_tmp) + 2]; sprintf(evdev_path_tmp, "%s/%s", evdev_path, evdev_file_tmp);
-                                evdev_fd = open(evdev_path_tmp, O_RDONLY);
-                                if (evdev_fd < 0){continue;} //failed to open file
-                                evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
-                                if (evdev_name[0] != '\0'){
-                                    if (scan_mode){print_stderr("'%s' : '%s'\n", evdev_path_tmp, evdev_name); //no device name provided, just output all devices and paths
-                                    } else if (strcmp(evdev_name_search, evdev_name) == 0){strncpy(evdev_path_used, evdev_path_tmp, sizeof(evdev_path_used)); break;} //proper device found
-                                }
-                            }
-                            free(folder_list);
-                            if (scan_mode){print_stderr("scan finished\n"); evdev_retry = false;}
-                        } else if (debug){print_stderr("'%s' folder is empty\n", evdev_path);}
-                    } else if (S_ISREG(evdev_stat.st_mode)){ //given path is a file
-                        evdev_fd = open(evdev_path, O_RDONLY);
-                        if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path);} //failed to open file
-                        } else {
-                            ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
-                            if (evdev_name[0] != '\0'){
-                                strncpy(evdev_path_used, evdev_path, sizeof(evdev_path_used));
-                                strncpy(evdev_name_search, evdev_name, sizeof(evdev_name_search));
-                            } else {if (debug){print_stderr("failed to detect device name for '%s'\n", evdev_path);} evdev_retry = false;}
-                        }
-                    } else if (debug){print_stderr("invalid file type for '%s'\n", evdev_path); evdev_retry = false;}
-                } else if (debug){print_stderr("failed to open '%s'\n", evdev_path);}
-            }
-            evdev_fd = -1;
-
-            if (evdev_path_used[0] != '\0'){ //"valid" device found
-                evdev_fd = open(evdev_path_used, O_RDONLY);
-                if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path_used);} //failed to open file
-                } else {
-                    evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); //get device name
-                    if (evdev_name[0] == '\0'){if (debug){print_stderr("failed to get device name for '%s'\n", evdev_path_used);} close(evdev_fd); evdev_fd = -1;
-                    } else {
-                        fcntl(evdev_fd, F_SETFL, fcntl(evdev_fd, F_GETFL) | O_NONBLOCK); //set fd to non blocking
-                        if (debug){print_stderr("'%s' will be used for '%s' device\n", evdev_path_used, evdev_name);}
-                    }
-                }
-            }
-
-            if (evdev_fd == -1){
-                if (evdev_name_search[0] != '\0' && debug){print_stderr("can't poll from '%s' device\n", evdev_name_search);}
-                if (evdev_retry){if (debug){print_stderr("retry in %ds\n", evdev_check_interval);}} else {print_stderr("evdev routine disabled\n"); goto thread_close;}
-            }
-
-            recheck_start_time = loop_start_time;
-        }
-
-        if (evdev_fd != -1){
-            int events_read = read(evdev_fd, &events, events_size);
-            if (errno == ENODEV || errno == ENOENT || errno == EBADF){
-                if (debug){print_stderr("failed to read from device '%s' (%s), try to reopen in %ds\n", evdev_name_search, evdev_path_used, evdev_check_interval);}
-                close(evdev_fd); evdev_fd = -1; continue;
-            } else if (events_read >= input_event_size){
-                if (evdev_detected_start > 0. && loop_start_time - evdev_detected_start > evdev_sequence_detect_interval){ //reset sequence
-                    memset(evdev_detected_sequence, 0, sizeof(evdev_detected_sequence));
-                    evdev_detected_sequence_index = 0; evdev_detected_start = -1.;
-                    if (debug){print_stderr("sequence timer reset\n");}
-                }
-
-                for (int i = 0; i < events_read / input_event_size; i++){
-                    //printf("%ld.%06ld, type:%u, code:%u, value:%d\n", events[i].time.tv_sec, events[i].time.tv_usec, events[i].type, events[i].code, events[i].value);
-                    int tmp_code = events[i].code;
-                    #ifndef NO_OSD
-                        bool code_osd_detect = (osd_evdev_sequence_limit == 0) ? false : in_array_int(osd_evdev_sequence, tmp_code, osd_evdev_sequence_limit) != -1;
-                    #else
-                        bool code_osd_detect = false;
-                    #endif
-                    #ifndef NO_TINYOSD
-                        bool code_tinyosd_detect = (tinyosd_evdev_sequence_limit == 0) ? false : in_array_int(tinyosd_evdev_sequence, tmp_code, tinyosd_evdev_sequence_limit) != -1;
-                    #else
-                        bool code_tinyosd_detect = false;
-                    #endif
-
-                    if (tmp_code != 0 && events[i].value != 0 && (code_osd_detect || code_tinyosd_detect)){ //keycode in osd or tiny osd sequence
-                        if (evdev_detected_start < 0){ //check not started
-                            evdev_detected_start = loop_start_time;
-                            if (debug){print_stderr("sequence timer start\n");}
-                        }
-                        if (loop_start_time - evdev_detected_start < evdev_sequence_detect_interval && in_array_int(evdev_detected_sequence, tmp_code, evdev_sequence_max * 2) == -1){ //still in detection interval and not in detected sequence
-                            evdev_detected_sequence[evdev_detected_sequence_index++] = tmp_code;
-                            if (debug){print_stderr("%d added to detected sequence\n", tmp_code);}
-                        }
-                    }
-                }
-
-                #if !(defined(NO_OSD) && defined(NO_TINYOSD))
-                int tmp_detected_count = 0;
-                #endif
-                #ifndef NO_OSD
-                for (int i = 0; i < osd_evdev_sequence_limit; i++){if (osd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, osd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check osd trigger
-                if (tmp_detected_count == osd_evdev_sequence_limit){
-                    if (debug){print_stderr("osd triggered\n");}
-                    osd_start_time = loop_start_time;
-                    evdev_detected_start = 1.;
-                } else {
-                    tmp_detected_count = 0;
-                #endif
-                #ifndef NO_TINYOSD
-                    for (int i = 0; i < tinyosd_evdev_sequence_limit; i++){if (tinyosd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, tinyosd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check tiny osd trigger
-                    if (tmp_detected_count == tinyosd_evdev_sequence_limit){
-                        if (debug){print_stderr("tiny osd triggered\n");}
-                        tinyosd_start_time = loop_start_time;
-                        evdev_detected_start = 1.;
-                    }
-                #endif
-                #ifndef NO_OSD
-                }
-                #endif
-            }
-        }
-
-        double loop_end_time = get_time_double();
-        if (loop_end_time - loop_start_time < update_interval){usleep((useconds_t) ((update_interval - (loop_end_time - loop_start_time)) * 1000000.));} //limit update rate
+    if (!evdev_init){
+        evdev_path_len = strlen(evdev_path);
+        if (evdev_path_len > 1 && evdev_path[evdev_path_len - 1] == '/'){evdev_path[evdev_path_len - 1] = '\0'; evdev_path_len--;} //remove trailing '/' from event path
+        evdev_sequence_detect_interval = (double)evdev_sequence_detect_interval_ms / 1000.;
+        input_event_size = (int) sizeof(struct input_event); events_size = input_event_size * input_event_count;
+        evdev_init = true;
     }
 
-    thread_close:;
-    if (evdev_fd != -1){close(evdev_fd);} //close opened fd
-    print_stderr("thread closed\n"); evdev_thread_started = false; pthread_cancel(evdev_thread); //close thread
-    return NULL;
+    if (evdev_fd == -1 && loop_start_time - recheck_start_time > (double)evdev_check_interval){ //device has failed or not started
+        bool evdev_retry = true;
+        char evdev_name[255] = ""; //store temporary device name
+        if (evdev_path_used[0] == '\0'){ //input device detection
+            struct stat evdev_stat;
+            if (stat(evdev_path, &evdev_stat) == 0){
+                if (S_ISDIR(evdev_stat.st_mode)){ //given path is a folder, scan for proper event file
+                    struct dirent **folder_list;
+                    int folder_files = scandir(evdev_path, &folder_list, 0, 0);
+                    if (folder_files != -1){
+                        bool scan_mode = evdev_name_search[0] == '\0';
+                        if (scan_mode){print_stderr("no event device name provided, falling back to scan mode\n");}
+                        for (int i = 0; i < folder_files; i++){
+                            char* evdev_file_tmp = folder_list[i]->d_name;
+                            if (evdev_file_tmp[0] == '.'){continue;} //ignore hidden files
+                            char evdev_path_tmp[evdev_path_len + strlen(evdev_file_tmp) + 2]; sprintf(evdev_path_tmp, "%s/%s", evdev_path, evdev_file_tmp);
+                            evdev_fd = open(evdev_path_tmp, O_RDONLY);
+                            if (evdev_fd < 0){continue;} //failed to open file
+                            evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
+                            if (evdev_name[0] != '\0'){
+                                if (scan_mode){print_stderr("'%s' : '%s'\n", evdev_path_tmp, evdev_name); //no device name provided, just output all devices and paths
+                                } else if (strcmp(evdev_name_search, evdev_name) == 0){strncpy(evdev_path_used, evdev_path_tmp, sizeof(evdev_path_used)); break;} //proper device found
+                            }
+                        }
+                        free(folder_list);
+                        if (scan_mode){print_stderr("scan finished\n"); evdev_retry = false;}
+                    } else if (debug){print_stderr("'%s' folder is empty\n", evdev_path);}
+                } else if (S_ISREG(evdev_stat.st_mode)){ //given path is a file
+                    evdev_fd = open(evdev_path, O_RDONLY);
+                    if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path);} //failed to open file
+                    } else {
+                        ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
+                        if (evdev_name[0] != '\0'){
+                            strncpy(evdev_path_used, evdev_path, sizeof(evdev_path_used));
+                            strncpy(evdev_name_search, evdev_name, sizeof(evdev_name_search));
+                        } else {if (debug){print_stderr("failed to detect device name for '%s'\n", evdev_path);} evdev_retry = false;}
+                    }
+                } else if (debug){print_stderr("invalid file type for '%s'\n", evdev_path); evdev_retry = false;}
+            } else if (debug){print_stderr("failed to open '%s'\n", evdev_path);}
+        }
+        evdev_fd = -1;
+
+        if (evdev_path_used[0] != '\0'){ //"valid" device found
+            evdev_fd = open(evdev_path_used, O_RDONLY);
+            if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path_used);} //failed to open file
+            } else {
+                evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); //get device name
+                if (evdev_name[0] == '\0'){if (debug){print_stderr("failed to get device name for '%s'\n", evdev_path_used);} close(evdev_fd); evdev_fd = -1;
+                } else {
+                    fcntl(evdev_fd, F_SETFL, fcntl(evdev_fd, F_GETFL) | O_NONBLOCK); //set fd to non blocking
+                    if (debug){print_stderr("'%s' will be used for '%s' device\n", evdev_path_used, evdev_name);}
+                }
+            }
+        }
+
+        if (evdev_fd == -1){
+            if (evdev_name_search[0] != '\0' && debug){print_stderr("can't poll from '%s' device\n", evdev_name_search);}
+            if (evdev_retry){if (debug){print_stderr("retry in %ds\n", evdev_check_interval);}} else {print_stderr("evdev disabled\n"); evdev_enabled = false; return;}
+        }
+
+        recheck_start_time = loop_start_time;
+    }
+
+    if (evdev_fd == -1){
+        return;
+    } else {
+        int events_read = read(evdev_fd, &events, events_size);
+        if (errno == ENODEV || errno == ENOENT || errno == EBADF){
+            if (debug){print_stderr("failed to read from device '%s' (%s), try to reopen in %ds\n", evdev_name_search, evdev_path_used, evdev_check_interval);}
+            close(evdev_fd); evdev_fd = -1; return;
+        } else if (events_read >= input_event_size){
+            if (evdev_detected_start > 0. && loop_start_time - evdev_detected_start > evdev_sequence_detect_interval){ //reset sequence
+                memset(evdev_detected_sequence, 0, sizeof(evdev_detected_sequence));
+                evdev_detected_sequence_index = 0; evdev_detected_start = -1.;
+                if (debug){print_stderr("sequence timer reset\n");}
+            }
+
+            for (int i = 0; i < events_read / input_event_size; i++){
+                //printf("%ld.%06ld, type:%u, code:%u, value:%d\n", events[i].time.tv_sec, events[i].time.tv_usec, events[i].type, events[i].code, events[i].value);
+                int tmp_code = events[i].code;
+                #ifndef NO_OSD
+                    bool code_osd_detect = (osd_evdev_sequence_limit == 0) ? false : in_array_int(osd_evdev_sequence, tmp_code, osd_evdev_sequence_limit) != -1;
+                #else
+                    bool code_osd_detect = false;
+                #endif
+                #ifndef NO_TINYOSD
+                    bool code_tinyosd_detect = (tinyosd_evdev_sequence_limit == 0) ? false : in_array_int(tinyosd_evdev_sequence, tmp_code, tinyosd_evdev_sequence_limit) != -1;
+                #else
+                    bool code_tinyosd_detect = false;
+                #endif
+
+                if (tmp_code != 0 && events[i].value != 0 && (code_osd_detect || code_tinyosd_detect)){ //keycode in osd or tiny osd sequence
+                    if (evdev_detected_start < 0){ //check not started
+                        evdev_detected_start = loop_start_time;
+                        if (debug){print_stderr("sequence timer start\n");}
+                    }
+                    if (loop_start_time - evdev_detected_start < evdev_sequence_detect_interval && in_array_int(evdev_detected_sequence, tmp_code, evdev_sequence_max * 2) == -1){ //still in detection interval and not in detected sequence
+                        evdev_detected_sequence[evdev_detected_sequence_index++] = tmp_code;
+                        if (debug){print_stderr("%d added to detected sequence\n", tmp_code);}
+                    }
+                }
+            }
+
+            #if !(defined(NO_OSD) && defined(NO_TINYOSD))
+            int tmp_detected_count = 0;
+            #endif
+            #ifndef NO_OSD
+            for (int i = 0; i < osd_evdev_sequence_limit; i++){if (osd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, osd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check osd trigger
+            if (tmp_detected_count == osd_evdev_sequence_limit){
+                if (debug){print_stderr("osd triggered\n");}
+                osd_start_time = loop_start_time;
+                evdev_detected_start = 1.;
+            } else {
+                tmp_detected_count = 0;
+            #endif
+            #ifndef NO_TINYOSD
+                for (int i = 0; i < tinyosd_evdev_sequence_limit; i++){if (tinyosd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, tinyosd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check tiny osd trigger
+                if (tmp_detected_count == tinyosd_evdev_sequence_limit){
+                    if (debug){print_stderr("tiny osd triggered\n");}
+                    tinyosd_start_time = loop_start_time;
+                    evdev_detected_start = 1.;
+                }
+            #endif
+            #ifndef NO_OSD
+            }
+            #endif
+        }
+    }
 }
 #endif
 
@@ -1235,6 +1228,9 @@ static void program_close(void){ //regroup all close functs
     if (already_killed){return;}
     if (strlen(pid_path) > 0){remove(pid_path);} //delete pid file
 
+    #ifndef NO_EVDEV
+        if (evdev_fd != -1){close(evdev_fd);} //close opened event fd
+    #endif
     #ifndef NO_OSD
         if (osd_buffer_ptr != NULL){free(osd_buffer_ptr); osd_buffer_ptr = NULL;} //free osd buffer
     #endif
@@ -1543,9 +1539,7 @@ int main(int argc, char *argv[]){
     #ifdef NO_SIGNAL_FILE
         print_stderr("osd trigger using file disabled at compilation time.\n");
     #endif
-    #ifndef NO_EVDEV
-        evdev_thread_started = pthread_create(&evdev_thread, NULL, evdev_routine, NULL) == 0; //create evdev routine thread
-    #else
+    #ifdef NO_EVDEV
         print_stderr("osd trigger using evdev disabled at compilation time.\n");
     #endif
 
@@ -1682,18 +1676,35 @@ int main(int argc, char *argv[]){
     while (!kill_requested){ //main loop
         double loop_start_time = get_time_double(); //loop start time
         dispmanx_update = vc_dispmanx_update_start(0); //start vc update
-        #if !defined(NO_SIGNAL_FILE) && !(defined(NO_OSD) && defined(NO_TINYOSD))
-            if (!signal_file_used && signal_path[0] != '\0' && access(signal_path, R_OK) && osd_start_time < 0. && tinyosd_start_time < 0.){ //check signal file value
+
+        #ifndef NO_EVDEV
+            if (evdev_enabled){evdev_check(loop_start_time);} //check evdev input, init if needed
+        #endif
+
+        #ifndef NO_SIGNAL_FILE
+            if (!signal_file_used && osd_start_time < 0. && tinyosd_start_time < 0. && signal_path[0] != '\0' && access(signal_path, R_OK)){ //check signal file value
                 int tmp_sig = 0; FILE *filehandle = fopen(signal_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &tmp_sig); fclose(filehandle);}
+                #ifndef NO_OSD
                 if (tmp_sig == SIGUSR1){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
-                } else if (tmp_sig == SIGUSR2){tinyosd_start_time = loop_start_time; signal_file_used = true;} //tiny osd
+                } else {
+                #endif
+                #ifndef NO_TINYOSD
+                if (tmp_sig == SIGUSR2){tinyosd_start_time = loop_start_time; signal_file_used = true;} //tiny osd
+                #endif
+                #ifndef NO_OSD
+                }
+                #endif
             }
         #endif
 
         if (loop_start_time - gpio_check_start_time > 0.25){ //check gpio 4 times a sec
-            #if !defined(NO_GPIO) && !(defined(NO_OSD) && defined(NO_TINYOSD))
-                if (osd_start_time < 0 && gpio_check(1)){osd_start_time = loop_start_time;} //osd gpio trigger
-                if (tinyosd_start_time < 0 && gpio_check(2)){tinyosd_start_time = loop_start_time;} //tiny osd gpio trigger
+            #ifndef NO_GPIO
+                #ifndef NO_OSD
+                    if (osd_start_time < 0 && gpio_check(1)){osd_start_time = loop_start_time;} //osd gpio trigger
+                #endif
+                #ifndef NO_TINYOSD
+                    if (tinyosd_start_time < 0 && gpio_check(2)){tinyosd_start_time = loop_start_time;} //tiny osd gpio trigger
+                #endif
             #endif
             if (loop_start_time - sec_check_start_time > 1.){ //warning trigger every seconds
                 #if !defined(NO_GPIO) && !defined(NO_BATTERY_ICON)

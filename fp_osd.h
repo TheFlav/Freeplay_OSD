@@ -99,7 +99,7 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* /*file
 static bool lowbat_sysfs(void); //read sysfs power_supply battery capacity, return true if threshold, false if under or file not found
 static bool cputemp_sysfs(void); //read sysfs cpu temperature, return true if threshold, false if under or file not found
 
-int int_constrain(int* /*val*/, int /*min*/, int /*max*/); //limit int value to given (incl) min and max value, return 0 if val within min and max, -1 under min, 1 over max
+static int int_constrain(int* /*val*/, int /*min*/, int /*max*/); //limit int value to given (incl) min and max value, return 0 if val within min and max, -1 under min, 1 over max
 static bool html_to_uint32_color(char* /*html_color*/, uint32_t* /*rgba*/); //convert html color (3/4 or 6/8 hex) to uint32_t (alpha, blue, green, red)
 
 static void tty_signal_handler(int /*sig*/); //handle signal func
@@ -108,8 +108,8 @@ static void program_get_path(char** /*args*/, char* /*path*/, char* /*program*/)
 static void program_usage(void); //display help
 
 #ifndef NO_EVDEV
-    int in_array_int(int* /*arr*/, int /*value*/, int /*arr_size*/); //search in value in int array, return index or -1 on failure
-    void *evdev_routine(void* /*arg*/); //evdev input thread routine
+    static int in_array_int(int* /*arr*/, int /*value*/, int /*arr_size*/); //search in value in int array, return index or -1 on failure
+    static void evdev_check(double /*loop_start_time*/); //evdev input check
 #endif
 
 
@@ -134,10 +134,9 @@ double program_start_time = .0; //used for print output
 
 //evdev thread specific
 #ifndef NO_EVDEV
-    pthread_t evdev_thread = 0; //event detection thread
-    bool evdev_thread_started = false; //event detection thread is running
+    int evdev_fd = -1;
+    bool evdev_enabled = true; //event detection still enabled, defined during runtime
     char evdev_path_used[PATH_MAX] = ""; //event device path used, done that way to allow disconnect and reconnect of controller without failing evdev routine
-    double evdev_sequence_detect_interval = 0.; //max interval between first and last input detected in seconds, defined during runtime
 #endif
 
 //cpu data
