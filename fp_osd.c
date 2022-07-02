@@ -1037,7 +1037,7 @@ void evdev_check(double loop_start_time){ //evdev input check
         }
     #endif
 
-    if (osd_evdev_sequence_limit == 0 && tinyosd_evdev_sequence_limit == 0){print_stderr("no valid event sequence detected, evdev disabled\n"); evdev_enabled = false; return;}
+    if (!evdev_init && osd_evdev_sequence_limit == 0 && tinyosd_evdev_sequence_limit == 0){print_stderr("no valid event sequence detected, evdev disabled\n"); evdev_enabled = false; return;}
 
     //event input
     static int evdev_path_len;
@@ -1148,11 +1148,11 @@ void evdev_check(double loop_start_time){ //evdev input check
                 #endif
 
                 if (tmp_code != 0 && events[i].value != 0 && (code_osd_detect || code_tinyosd_detect)){ //keycode in osd or tiny osd sequence
-                    if (evdev_detected_start < 0){ //check not started
+                    if (evdev_detected_start < 0.){ //check not started
                         evdev_detected_start = loop_start_time;
                         if (debug){print_stderr("sequence timer start\n");}
                     }
-                    if (loop_start_time - evdev_detected_start < evdev_sequence_detect_interval && in_array_int(evdev_detected_sequence, tmp_code, evdev_sequence_max * 2) == -1){ //still in detection interval and not in detected sequence
+                    if (loop_start_time - evdev_detected_start <= evdev_sequence_detect_interval && in_array_int(evdev_detected_sequence, tmp_code, evdev_sequence_max * 2) == -1){ //still in detection interval and not in detected sequence
                         evdev_detected_sequence[evdev_detected_sequence_index++] = tmp_code;
                         if (debug){print_stderr("%d added to detected sequence\n", tmp_code);}
                     }
@@ -1160,27 +1160,30 @@ void evdev_check(double loop_start_time){ //evdev input check
             }
 
             #if !(defined(NO_OSD) && defined(NO_TINYOSD))
-            int tmp_detected_count = 0;
-            #endif
-            #ifndef NO_OSD
-            for (int i = 0; i < osd_evdev_sequence_limit; i++){if (osd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, osd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check osd trigger
-            if (tmp_detected_count == osd_evdev_sequence_limit){
-                if (debug){print_stderr("osd triggered\n");}
-                osd_start_time = loop_start_time;
-                evdev_detected_start = 1.;
-            } else {
-                tmp_detected_count = 0;
-            #endif
-            #ifndef NO_TINYOSD
-                for (int i = 0; i < tinyosd_evdev_sequence_limit; i++){if (tinyosd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, tinyosd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check tiny osd trigger
-                if (tmp_detected_count == tinyosd_evdev_sequence_limit){
-                    if (debug){print_stderr("tiny osd triggered\n");}
-                    tinyosd_start_time = loop_start_time;
-                    evdev_detected_start = 1.;
+                if (evdev_detected_sequence_index != 0){
+                    #ifndef NO_OSD
+                        int tmp_detected_count = 0;
+                        for (int i = 0; i < osd_evdev_sequence_limit; i++){if (osd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, osd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check osd trigger
+                        if (tmp_detected_count == osd_evdev_sequence_limit){
+                            if (debug){print_stderr("osd triggered\n");}
+                            if (tinyosd_start_time < 0.){osd_start_time = loop_start_time;} else {osd_hold = true;}
+                            evdev_detected_start = 1.; //1. on purpose, does reset sequence on next loop
+                        }
+                    #endif
+                    #ifndef NO_TINYOSD
+                        #ifdef NO_OSD
+                            int tmp_detected_count = 0;
+                        #else
+                            tmp_detected_count = 0;
+                        #endif
+                        for (int i = 0; i < tinyosd_evdev_sequence_limit; i++){if (tinyosd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, tinyosd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check tiny osd trigger
+                        if (tmp_detected_count == tinyosd_evdev_sequence_limit){
+                            if (debug){print_stderr("osd triggered\n");}
+                            if (osd_start_time < 0.){tinyosd_start_time = loop_start_time;} else {tinyosd_hold = true;}
+                            evdev_detected_start = 1.; //1. on purpose, does reset sequence on next loop
+                        }
+                    #endif
                 }
-            #endif
-            #ifndef NO_OSD
-            }
             #endif
         }
     }
@@ -1217,18 +1220,18 @@ static void tty_signal_handler(int sig){ //handle signal func
     if (debug){print_stderr("DEBUG: signal received: %d.\n", sig);}
     if (sig == SIGUSR1){
         #if !defined(NO_SIGNAL) && !defined(NO_OSD)
-            osd_start_time = get_time_double(); //full osd start time
+            if (tinyosd_start_time < 0.){osd_start_time = get_time_double();} else {osd_hold = true;}
         #endif
     } else if (sig == SIGUSR2){
         #if !defined(NO_SIGNAL) && !defined(NO_TINYOSD)
-            tinyosd_start_time = get_time_double(); //tiny osd
+            if (osd_start_time < 0.){tinyosd_start_time = get_time_double();} else {tinyosd_hold = true;}
         #endif
     } else {kill_requested = true;}
 }
 
 static void program_close(void){ //regroup all close functs
     if (already_killed){return;}
-    if (strlen(pid_path) > 0){remove(pid_path);} //delete pid file
+    if (pid_path[0] != '\0'){remove(pid_path); pid_path[0] = '\0';} //delete pid file
 
     #ifndef NO_EVDEV
         if (evdev_fd != -1){close(evdev_fd);} //close opened event fd
@@ -1246,7 +1249,7 @@ static void program_close(void){ //regroup all close functs
         if (cputemp_buffer_ptr != NULL){free(cputemp_buffer_ptr); cputemp_buffer_ptr = NULL;} //free cpu temp buffer
     #endif
 
-    if (dispmanx_display != 0){vc_dispmanx_display_close(dispmanx_display); print_stderr("dispmanx freed.\n");}
+    if (dispmanx_display != 0){vc_dispmanx_display_close(dispmanx_display); dispmanx_display = 0; print_stderr("dispmanx freed.\n");}
     bcm_host_deinit(); //deinit bcm host when program closes
     already_killed = true;
 }
@@ -1368,12 +1371,17 @@ static void program_usage(void){ //display help
 
     fprintf(stderr,
     "\nOSD data:\n"
-    "\t-rtc <PATH> (if invalid, uptime will be used. Default:'%s').\n"
     "\t-cpu_thermal <PATH> (file containing CPU temperature. Default:'%s').\n"
     "\t-cpu_thermal_divider <NUM> (divider to get actual temperature. Default:'%u').\n"
+    , cpu_thermal_path, cpu_thermal_divider);
+
+#if !(defined(NO_OSD) && defined(NO_TINYOSD))
+    fprintf(stderr,
+    "\t-rtc <PATH> (if invalid, uptime will be used. Default:'%s').\n"
     "\t-backlight <PATH> (file containing backlight current value. Default:'%s').\n"
     "\t-backlight_max <PATH> (file containing backlight maximum value. Default:'%s').\n"
-    , rtc_path, cpu_thermal_path, cpu_thermal_divider, backlight_path, backlight_max_path);
+    , rtc_path, backlight_path, backlight_max_path);
+#endif
 
     fprintf(stderr,
     "\nProgram:\n"
@@ -1491,12 +1499,14 @@ int main(int argc, char *argv[]){
 #endif
 
         //OSD data
+#if !(defined(NO_OSD) && defined(NO_TINYOSD))
         } else if (strcmp(argv[i], "-rtc") == 0){strncpy(rtc_path, argv[++i], PATH_MAX-1);
+        } else if (strcmp(argv[i], "-backlight") == 0){strncpy(backlight_path, argv[++i], PATH_MAX-1);
+        } else if (strcmp(argv[i], "-backlight_max") == 0){strncpy(backlight_max_path, argv[++i], PATH_MAX-1);
+#endif
         } else if (strcmp(argv[i], "-cpu_thermal") == 0){strncpy(cpu_thermal_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-cpu_thermal_divider") == 0){cpu_thermal_divider = atoi(argv[++i]);
             if (cpu_thermal_divider == 0){print_stderr("invalid -cpu_thermal_divider argument, reset to '1', value needs to be over 0\n"); cpu_thermal_divider = 1;}
-        } else if (strcmp(argv[i], "-backlight") == 0){strncpy(backlight_path, argv[++i], PATH_MAX-1);
-        } else if (strcmp(argv[i], "-backlight_max") == 0){strncpy(backlight_max_path, argv[++i], PATH_MAX-1);
 
         //Program
         } else if (strcmp(argv[i], "-display") == 0){display_number = atoi(argv[++i]);
@@ -1656,9 +1666,9 @@ int main(int argc, char *argv[]){
     //tiny osd
     #ifndef NO_TINYOSD
         int tinyosd_y = 0, tinyosd_height_dest = (double)display_height * ((double)tinyosd_height_percent / 100);
-        double tinyosd_downsizing = (double)tinyosd_height_dest / RASPIDMX_FONT_HEIGHT;
-        int tinyosd_width = ALIGN_TO_16((int)((double)display_width / tinyosd_downsizing)), tinyosd_height = ALIGN_TO_16(RASPIDMX_FONT_HEIGHT);
-        print_stderr("tiny osd resolution: %dx%d (%.4lf)\n", tinyosd_width, tinyosd_height, tinyosd_downsizing);
+        double tinyosd_scaling = (double)tinyosd_height_dest / RASPIDMX_FONT_HEIGHT;
+        int tinyosd_width = ALIGN_TO_16((int)((double)display_width / tinyosd_scaling)), tinyosd_height = ALIGN_TO_16(RASPIDMX_FONT_HEIGHT);
+        print_stderr("tiny osd resolution: %dx%d (%.4lf)\n", tinyosd_width, tinyosd_height, tinyosd_scaling);
         DISPMANX_ELEMENT_HANDLE_T tinyosd_element = 0;
         DISPMANX_RESOURCE_HANDLE_T tinyosd_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, tinyosd_width, tinyosd_height, &vc_image_ptr);
         if (tinyosd_resource > 0 && tinyosd_pos_str[0]=='b'){tinyosd_y = display_height - tinyosd_height_dest;} //footer alignment
@@ -1674,7 +1684,7 @@ int main(int argc, char *argv[]){
     #if !defined(NO_SIGNAL_FILE) && !(defined(NO_OSD) && defined(NO_TINYOSD))
         bool signal_file_used = false; //signal read from a file
     #endif
-    bool icon_update = false; //warning icon update trigger
+    bool icon_update = false; //warning icon update trigger and second interval reset
 
     while (!kill_requested){ //main loop
         double loop_start_time = get_time_double(); //loop start time
@@ -1688,14 +1698,19 @@ int main(int argc, char *argv[]){
             if (!signal_file_used && osd_start_time < 0. && tinyosd_start_time < 0. && signal_path[0] != '\0' && access(signal_path, R_OK)){ //check signal file value
                 int tmp_sig = 0; FILE *filehandle = fopen(signal_path, "r"); if (filehandle != NULL){fscanf(filehandle, "%d", &tmp_sig); fclose(filehandle);}
                 #ifndef NO_OSD
-                if (tmp_sig == SIGUSR1){osd_start_time = loop_start_time; signal_file_used = true; //full osd start time
-                } else {
+                    if (tmp_sig == SIGUSR1){ //full osd
+                        if (tinyosd_start_time < 0.){osd_start_time = loop_start_time;} else {osd_hold = true;}
+                        signal_file_used = true;
+                    } else {
                 #endif
-                #ifndef NO_TINYOSD
-                if (tmp_sig == SIGUSR2){tinyosd_start_time = loop_start_time; signal_file_used = true;} //tiny osd
-                #endif
+                    #ifndef NO_TINYOSD
+                        if (tmp_sig == SIGUSR2){ //tiny osd
+                            if (osd_start_time < 0.){tinyosd_start_time = loop_start_time;} else {tinyosd_hold = true;}
+                            signal_file_used = true;
+                        }
+                    #endif
                 #ifndef NO_OSD
-                }
+                    }
                 #endif
             }
         #endif
@@ -1703,12 +1718,17 @@ int main(int argc, char *argv[]){
         if (loop_start_time - gpio_check_start_time > 0.25){ //check gpio 4 times a sec
             #ifndef NO_GPIO
                 #ifndef NO_OSD
-                    if (osd_start_time < 0 && gpio_check(1)){osd_start_time = loop_start_time;} //osd gpio trigger
+                    if (osd_start_time < 0. && gpio_check(1)){ //osd gpio trigger
+                        if (tinyosd_start_time < 0.){osd_start_time = loop_start_time;} else {osd_hold = true;}
+                    }
                 #endif
                 #ifndef NO_TINYOSD
-                    if (tinyosd_start_time < 0 && gpio_check(2)){tinyosd_start_time = loop_start_time;} //tiny osd gpio trigger
+                    if (tinyosd_start_time < 0. && gpio_check(2)){ //tiny osd gpio trigger
+                        if (osd_start_time < 0.){tinyosd_start_time = loop_start_time;} else {tinyosd_hold = true;}
+                    }
                 #endif
             #endif
+
             if (loop_start_time - sec_check_start_time > 1.){ //warning trigger every seconds
                 #if !defined(NO_GPIO) && !defined(NO_BATTERY_ICON)
                     lowbat_trigger = gpio_check(0);
@@ -1734,32 +1754,30 @@ int main(int argc, char *argv[]){
         //full osd
         #ifndef NO_OSD
             if (osd_test){osd_start_time = loop_start_time;}
-            if (osd_resource > 0 && osd_start_time > 0){
+            if (osd_hold && tinyosd_start_time < 0.){osd_start_time = loop_start_time; osd_hold = false;} //osd was on hold
+            if (osd_resource > 0 && osd_start_time > 0.){
                 if (loop_start_time - osd_start_time > (double)osd_timeout){ //osd timeout
                     if (osd_element > 0){vc_dispmanx_element_remove(dispmanx_update, osd_element); osd_element = 0;}
                     #ifndef NO_SIGNAL_FILE
                         if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                     #endif
                     osd_start_time = -1.;
-                } else if (tinyosd_start_time < 0){ //only if tiny osd not displayed
-                    osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);
-                }
+                } else {osd_build_element(osd_resource, &osd_element, dispmanx_update, osd_width, osd_height, 0, 0, display_width, display_height);}
             }
         #endif
 
         //tiny osd
         #ifndef NO_TINYOSD
             if (tinyosd_test){tinyosd_start_time = loop_start_time;}
-            if (tinyosd_resource > 0 && tinyosd_start_time > 0){
+            if (tinyosd_hold && osd_start_time < 0.){tinyosd_start_time = loop_start_time; tinyosd_hold = false;} //tiny osd was on hold
+            if (tinyosd_resource > 0 && tinyosd_start_time > 0.){
                 if (loop_start_time - tinyosd_start_time > (double)osd_timeout){ //osd timeout
                     if (tinyosd_element > 0){vc_dispmanx_element_remove(dispmanx_update, tinyosd_element); tinyosd_element = 0;}
                     #ifndef NO_SIGNAL_FILE
                         if (signal_file_used){FILE *filehandle = fopen(signal_path, "w"); if (filehandle != NULL){fputc('0', filehandle); fclose(filehandle);} signal_file_used = false;}
                     #endif
                     tinyosd_start_time = -1.;
-                } else if (osd_start_time < 0 || tinyosd_test){ //only if full osd not displayed
-                    tinyosd_build_element(tinyosd_resource, &tinyosd_element, dispmanx_update, tinyosd_width, tinyosd_height, 0, tinyosd_y, display_width, tinyosd_height_dest);
-                }
+                } else {tinyosd_build_element(tinyosd_resource, &tinyosd_element, dispmanx_update, tinyosd_width, tinyosd_height, 0, tinyosd_y, display_width, tinyosd_height_dest);}
             }
         #endif
 
@@ -1775,7 +1793,7 @@ int main(int argc, char *argv[]){
                     if (icon_update){
                         if (battery_rsoc >= 0){ //update dynamic icon
                             lowbatt_build_element(lowbat_resource, &lowbat_element, dispmanx_update, icons_org_width[icon_index], icons_org_height[icon_index], icons_x[icon_index], icons_dest_rect.y, icons_width[icon_index], icons_height);
-                        } else if (!lowbat_displayed && lowbat_element == 0){ //display static icon once
+                        } else if (!lowbat_displayed && lowbat_element == 0){ //display static icon
                             icons_dest_rect.x = icons_x[icon_index]; icons_dest_rect.width = icons_width[icon_index]; //icon x/width
                             lowbat_element = vc_dispmanx_element_add(dispmanx_update, dispmanx_display, osd_layer + 2, &icons_dest_rect, lowbat_resource, &lowbat_rect, DISPMANX_PROTECTION_NONE, &dispmanx_alpha_from_src, NULL, DISPMANX_NO_ROTATE);
                         }
@@ -1797,13 +1815,13 @@ int main(int argc, char *argv[]){
                         cputemp_build_element(cputemp_resource, &cputemp_element, dispmanx_update, icons_org_width[icon_index], icons_org_height[icon_index], icons_x[icon_index], icons_dest_rect.y, icons_width[icon_index], icons_height);
                         cputemp_displayed = true;
                     }
-                    //icons_dest_rect.y += icons_height * icons_y_dir; //next icon y position
+                    icons_dest_rect.y += icons_height * icons_y_dir; //next icon y position
                 } else if (cputemp_displayed){ //remove icon
                     if (cputemp_element > 0){vc_dispmanx_element_remove(dispmanx_update, cputemp_element); cputemp_element = 0;}
                     cputemp_displayed = false;
                 }
             }
-            //icon_index++;
+            icon_index++;
         #endif
 
         if (icon_update){sec_check_start_time = loop_start_time; icon_update = false;} //disable icon update until next loop

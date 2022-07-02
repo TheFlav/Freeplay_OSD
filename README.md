@@ -163,12 +163,12 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     <br>
 
   - OSD data :  
-    * ``-rtc <PATH>`` (\*\*) : Path used to check if RTC module installed.  
+    * ``-rtc <PATH>`` (\*\*)(!NO_OSD)(!NO_TINYOSD) : Path used to check if RTC module installed.  
     * ``-cpu_thermal <PATH>`` (\*\*)(\*\*\*) : Path to file containing current CPU temperature.  
       Default: ``/sys/class/thermal/thermal_zone0/temp``  
     * ``-cpu_thermal_divider <NUM>`` : Divider to get actual temperature (1000 for celcius by default on Pi).  
-    * ``-backlight <PATH>`` (\*\*)(\*\*\*) : File containing backlight current value.  
-    * ``-backlight_max <PATH>`` (\*\*)(\*\*\*) : File containing backlight maximum value.  
+    * ``-backlight <PATH>`` (\*\*)(\*\*\*)(!NO_OSD)(!NO_TINYOSD) : File containing backlight current value.  
+    * ``-backlight_max <PATH>`` (\*\*)(\*\*\*)(!NO_OSD)(!NO_TINYOSD) : File containing backlight maximum value.  
 <br>
 
 ### OSD informations:
@@ -178,7 +178,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * Signal sent to the program: ``SIGUSR1`` for Full OSD and ``SIGUSR2`` for Tiny OSD.  
     * File on the system (set with ``-signal_file <PATH>`` argument), contenting numeric value of ``SIGUSR1`` or ``SIGUSR2`` (file content is reset to "0" once triggered).  
     * GPIO pin set with ``-osd_gpio <PIN>`` argument for Full OSD (``-osd_gpio_reversed <0-1>`` to set LOW or HIGH trigger) and ``-tinyosd_gpio <PIN>`` argument for Tiny OSD (``-tinyosd_gpio_reversed <0-1>`` to set LOW or HIGH trigger).  
-  
+    * EVDEV monitoring to check specific key combination, please check ``Event device input`` section for more informations.  
+  - If one OSD triggered when another one is already displaying (e.g. Full OSD displayed and Tiny OSD triggered), triggered one is put on hold then displayed when the other one no more displayed.  
 
   
 (**F**): Full OSD, (**H**): Tiny OSD.  
@@ -196,8 +197,9 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
 
 - System (only displays informations successfully recovered) :  
   * CPU temperature and load (F/H).  
-  * Main memory, Used and Total memory (only displayed if total recovered).  
-  * GPU memory, Used and Total memory (only displayed if total recovered).  
+  * Ram, Used and Total.  
+  * Swap, Used and Total (only if Swap partition enabled).  
+  * GPU memory, Used and Total.  
 <br>
 
 - Backlight status (F/H) :  
@@ -313,7 +315,11 @@ sudo systemctl stop fp_osd.service
 - [scripts/](scripts/) : Contain sample scripts to install/remove services to run program as daemon.
 - [service_sample/](service_sample/) : Contain sample service files to run program as daemon.
 - [res/](res/) : Contain resources linked to the program like icons and other.
-- [font.h](font.h) : Bitmap font from Raspidmx project.
+- [test/](test/) : Contain files that can help to debug OSD and icons generation.
+- [archive/](archive/) : Can be discarded, contain some files used during dev but no more used.
+- [debug_export/](debug_export/) : Exported buffers when argument ``-buffer_png_export`` used will be placed here.
+- [dispmanx_screenshot/](dispmanx_screenshot/) : Program found on a forum to export current DispmanX screen to PPM format, only used for screenshots.
+- [font.h](font.h) : Bitmap font from Raspidmx project and custom icons.
 - [fp_osd.h](fp_osd.h)/[fp_osd.c](fp_osd.c) : OSD program.
 - [settings.h](settings.h) : User settings, mostly settable with program arguments.
 - [compile.sh](compile.sh) : Sample script to compile program.

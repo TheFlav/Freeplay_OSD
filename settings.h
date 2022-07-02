@@ -3,6 +3,8 @@ FreeplayTech On-screen (heads-up) display overlay
 
 User settings file.
 Please refer to fp_osd.h and fp_osd.c for more informations.
+
+Avoid messing with preprocessor conditions.
 */
 
 bool debug = false;
@@ -84,8 +86,8 @@ int cputemp_warn = 70, cputemp_crit = 80; //cpu temp icon display threshold
 
 //battery data
 #ifndef NO_GPIO
-int lowbat_gpio = 10; //gpio pin, -1 to disable
-bool lowbat_gpio_reversed = true; //gpio pin active low
+    int lowbat_gpio = 10; //gpio pin, -1 to disable
+    bool lowbat_gpio_reversed = true; //gpio pin active low
 #endif
 char battery_rsoc_path[PATH_MAX] = "/sys/class/power_supply/battery/capacity"; //absolute path to battery rsoc
 char battery_volt_path[PATH_MAX] = "/sys/class/power_supply/battery/voltage_now"; //absolute path to battery voltage
@@ -93,9 +95,11 @@ uint32_t battery_volt_divider = 1000000; //divide voltage by given value to get 
 int lowbat_limit = 10; //low battery icon display threshold (percent)
 
 //other paths
-char rtc_path[PATH_MAX] = "/sys/class/rtc/rtc0/"; //absolute path to rtc class
-char backlight_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight"; //absolute path to current backlight file
-char backlight_max_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight_max"; //absolute path to max backlight file
+#if !(defined(NO_OSD) && defined(NO_TINYOSD))
+    char rtc_path[PATH_MAX] = "/sys/class/rtc/rtc0/"; //absolute path to rtc class
+    char backlight_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight"; //absolute path to current backlight file
+    char backlight_max_path[PATH_MAX] = "/dev/shm/uhid_i2c_driver/0/backlight_max"; //absolute path to max backlight file
+#endif
 
 //debug
 #ifdef CHARSET_EXPORT

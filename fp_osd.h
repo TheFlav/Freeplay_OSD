@@ -128,8 +128,8 @@ char pid_path[PATH_MAX] = {'\0'}; //full path to program pid file
 //start time
 double program_start_time = .0; //used for print output
 #if !(defined(NO_OSD) && defined(NO_TINYOSD))
-    double osd_start_time = -1.; //osd start time
-    double tinyosd_start_time = -1.; //tiny osd start time
+    double osd_start_time = -1., tinyosd_start_time = -1.; //osd start time
+    bool osd_hold = false, tinyosd_hold = false; //one kind already displayed but other has to be displayed as well
 #endif
 
 //evdev thread specific
