@@ -400,6 +400,7 @@ static bool cputemp_sysfs(void){ //read sysfs cpu temperature, return true if th
         fscanf(filehandle, "%d", &cputemp_curr);
         fclose(filehandle);
         cputemp_curr /= cpu_thermal_divider;
+        cputemp_disp = cputemp_celsius ? cputemp_curr : (cputemp_curr * 9 / 5) + 32;
         if (cputemp_curr >= cputemp_crit){return true;}
     }
     return false;
@@ -545,7 +546,7 @@ static void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
                     uint32_t tmp_color = osd_color_text;
                     if (cputemp_curr > -1){
                         if (cputemp_curr >= cputemp_crit){tmp_color = osd_color_crit;} else if (cputemp_curr >= cputemp_warn){tmp_color = osd_color_warn;}
-                        sprintf(buffer, "CPU: %dC (%d%% load)", cputemp_curr, cpu_load);
+                        sprintf(buffer, "CPU: %d%c%c (%d%% load)", cputemp_disp, (char)248, cputemp_celsius?'C':'F', cpu_load);
                     } else {sprintf(buffer, "CPU: %d%%", cpu_load);}
                     raspidmx_drawStringRGBA32(osd_buffer_ptr, osd_width, osd_height, text_column, text_y, buffer, raspidmx_font_ptr, tmp_color, &osd_color_text_bg);
                     text_y += RASPIDMX_FONT_HEIGHT;
@@ -776,7 +777,7 @@ static void tinyosd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_
                 uint32_t tmp_color = osd_color_text;
                 if (cputemp_curr > -1){
                     if (cputemp_curr >= cputemp_crit){tmp_color = osd_color_crit;} else if (cputemp_curr >= cputemp_warn){tmp_color = osd_color_warn;}
-                    sprintf(buffer, "%dC %3d%%", cputemp_curr, cpu_load);
+                    sprintf(buffer, "%d%c%c %3d%%", cputemp_disp, (char)248, cputemp_celsius?'C':'F', cpu_load);
                 } else {sprintf(buffer, "%3d%%", cpu_load);}
 
                 text_column_left = raspidmx_drawCharRGBA32(tinyosd_buffer_ptr, osd_width, osd_height, text_column_left, 0, 2, osd_icon_font_ptr, tmp_color/*, NULL*/) + 2; //cpu icon
@@ -949,9 +950,8 @@ static void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_
             uint32_t tmp_color = 0xFF000000;
             if (cputemp_curr >= cputemp_crit){tmp_color = osd_color_crit;} else if (cputemp_curr >= cputemp_warn){tmp_color = osd_color_warn;}
 
-            buffer_rectangle_fill(cputemp_buffer_ptr, icon_width_16, icon_height_16, 3, 7, 32, 15, cputemp_icon_bg_color); //reset text background
-
-            char buffer[16]; sprintf(buffer, "%3dC", cputemp_curr);
+            buffer_rectangle_fill(cputemp_buffer_ptr, icon_width_16, icon_height_16, 2, 6, 40, 15, cputemp_icon_bg_color); //reset text background
+            char buffer[16]; sprintf(buffer, "%3d%c%c", cputemp_disp, (char)248, cputemp_celsius?'C':'F');
             raspidmx_drawStringRGBA32(cputemp_buffer_ptr, icon_width_16, icon_height_16, 3, 7, buffer, raspidmx_font_ptr, tmp_color, NULL);
 
             #ifdef BUFFER_PNG_EXPORT
@@ -1372,8 +1372,9 @@ static void program_usage(void){ //display help
     fprintf(stderr,
     "\nOSD data:\n"
     "\t-cpu_thermal <PATH> (file containing CPU temperature. Default:'%s').\n"
-    "\t-cpu_thermal_divider <NUM> (divider to get actual temperature. Default:'%u').\n"
-    , cpu_thermal_path, cpu_thermal_divider);
+    "\t-cpu_thermal_divider <NUM> (divider to get actual temperature in celsius. Default:'%u').\n"
+    "\t-cpu_thermal_celsius <0-1> (display CPU temperature in celsius, post conversion to fahrenheit if 0. Default:'%d').\n"
+    , cpu_thermal_path, cpu_thermal_divider, cputemp_celsius?1:0);
 
 #if !(defined(NO_OSD) && defined(NO_TINYOSD))
     fprintf(stderr,
@@ -1507,6 +1508,7 @@ int main(int argc, char *argv[]){
         } else if (strcmp(argv[i], "-cpu_thermal") == 0){strncpy(cpu_thermal_path, argv[++i], PATH_MAX-1);
         } else if (strcmp(argv[i], "-cpu_thermal_divider") == 0){cpu_thermal_divider = atoi(argv[++i]);
             if (cpu_thermal_divider == 0){print_stderr("invalid -cpu_thermal_divider argument, reset to '1', value needs to be over 0\n"); cpu_thermal_divider = 1;}
+        } else if (strcmp(argv[i], "-cpu_thermal_celsius") == 0){cputemp_celsius = atoi(argv[++i]) > 0;
 
         //Program
         } else if (strcmp(argv[i], "-display") == 0){display_number = atoi(argv[++i]);

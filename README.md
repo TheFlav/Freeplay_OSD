@@ -166,7 +166,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-rtc <PATH>`` (\*\*)(!NO_OSD)(!NO_TINYOSD) : Path used to check if RTC module installed.  
     * ``-cpu_thermal <PATH>`` (\*\*)(\*\*\*) : Path to file containing current CPU temperature.  
       Default: ``/sys/class/thermal/thermal_zone0/temp``  
-    * ``-cpu_thermal_divider <NUM>`` : Divider to get actual temperature (1000 for celcius by default on Pi).  
+    * ``-cpu_thermal_divider <NUM>`` : Divider to get actual temperature in celsius (1000 by default on Pi).  
+    * ``-cpu_thermal_celsius <0-1>`` : Display CPU temperature in celsius, post conversion to fahrenheit if 0 (1 by default).  
     * ``-backlight <PATH>`` (\*\*)(\*\*\*)(!NO_OSD)(!NO_TINYOSD) : File containing backlight current value.  
     * ``-backlight_max <PATH>`` (\*\*)(\*\*\*)(!NO_OSD)(!NO_TINYOSD) : File containing backlight maximum value.  
 <br>
@@ -254,7 +255,8 @@ If file is invalid, icon will never be displayed.
     - Digit 1 : 2,6 to 9,21
     - Digit 2 : 10,6 to 17,21
     - Digit 3 : 18,6 to 25,21
-    - Percent character : 26,6 to 33,21  
+    - Degree character : 26,6 to 33,21
+    - Temperature character : 34,6 to 41,21  
 <br>
 
 - Colors (updated at runtime):

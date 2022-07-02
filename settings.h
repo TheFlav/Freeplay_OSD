@@ -78,8 +78,9 @@ char osd_color_crit_str[9] = "ff5548"/*"EB3324"*/; uint32_t osd_color_crit = 0; 
 
 //cpu data
 char cpu_thermal_path[PATH_MAX] = "/sys/class/thermal/thermal_zone0/temp"; //absolute path to cpu temperature file
-uint32_t cpu_thermal_divider = 1000; //divide temp by given value to get celsus
-int cputemp_warn = 70, cputemp_crit = 80; //cpu temp icon display threshold
+uint32_t cpu_thermal_divider = 1000; //divide temp by given value to get celsius
+int cputemp_warn = 70, cputemp_crit = 80; //cpu temp icon display threshold in celsius
+bool cputemp_celsius = true; //display cpu temperature in celsius
 
 //memory data
 #define memory_divider 1024 //divide memory by given value to get mB

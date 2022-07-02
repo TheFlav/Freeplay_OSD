@@ -140,7 +140,7 @@ double program_start_time = .0; //used for print output
 #endif
 
 //cpu data
-int32_t cputemp_curr = -1, cputemp_last = -2; //current cpu temperature
+int32_t cputemp_curr = -1, cputemp_disp = -1, cputemp_last = -2; //current cpu temperature
 #ifndef NO_CPU_ICON
     uint32_t cputemp_icon_bg_color = 0xFF000000;
 #endif
