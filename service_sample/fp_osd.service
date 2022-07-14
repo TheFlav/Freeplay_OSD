@@ -1,0 +1,19 @@
+[Unit]
+Description=Freeplay OSD
+After=basic.target
+#After=meadiacenter.service
+
+[Service]
+# If User and Group are not specified, then by default systemd ExecStart runs as root
+User=pi
+Group=pi
+Type=simple
+ExecStart=/home/pi/Freeplay/Freeplay_OSD/fp_osd
+TimeoutStartSec=0
+# write to journal or within script to separate log file
+# StandardOutput=/home/pi/Freeplay/Freeplay_OSD/fp_osd-out.log
+# StandardError=/home/pi/Freeplay/Freeplay_OSD/fp_osd-err.log
+# Restart=always
+
+[Install]
+WantedBy=multi-user.target
