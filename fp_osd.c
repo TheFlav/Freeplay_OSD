@@ -213,18 +213,18 @@ static uint32_t buffer_getcolor_rgba(void* buffer, uint32_t width, uint32_t heig
 #ifdef BUFFER_PNG_EXPORT
 static bool buffer_png_export(void* buffer, uint32_t width, uint32_t height, const char* filename){ //export buffer to png, modified version of savePng() from Raspidmx
     //WARNING: function doesn't check in any way for buffer size, buffer is supposed to be 4 bytes per pixel, following RGBA dispmanx pixel format (revert).
-    if (filename == NULL || filename[0]=='\0'){print_stderr("invalid filename.\n"); return false;}
-    if (width == 0 || height == 0){print_stderr("invalid resolution: %dx%d.\n", width, height); return false;}
+    if (filename == NULL || filename[0]=='\0'){print_stderr("Invalid filename.\n"); return false;}
+    if (width == 0 || height == 0){print_stderr("Invalid resolution: %dx%d.\n", width, height); return false;}
 
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //allocate and initialize a png_struct write structure
-    if (png_ptr == NULL){print_stderr("failed to init png_struct write structure.\n"); return false;}
+    if (png_ptr == NULL){print_stderr("Failed to init png_struct write structure.\n"); return false;}
 
     png_infop info_ptr = png_create_info_struct(png_ptr); //allocate and initialize a png_info structure
-    if (info_ptr == NULL){print_stderr("failed to init png_info structure.\n"); png_destroy_write_struct(&png_ptr, 0); return false;}
+    if (info_ptr == NULL){print_stderr("Failed to init png_info structure.\n"); png_destroy_write_struct(&png_ptr, 0); return false;}
     if (setjmp(png_jmpbuf(png_ptr))){print_stderr("setjmp png_jmpbuf failed.\n"); png_destroy_write_struct(&png_ptr, &info_ptr); return false;}
 
     FILE *filehandle = fopen(filename, "wb");
-    if (filehandle == NULL){print_stderr("failed to open file handle for '%s'.\n", filename); png_destroy_write_struct(&png_ptr, &info_ptr); return false;}
+    if (filehandle == NULL){print_stderr("Failed to open file handle for '%s'.\n", filename); png_destroy_write_struct(&png_ptr, &info_ptr); return false;}
 
     png_init_io(png_ptr, filehandle); //initialize input/output for the PNG file
     png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
@@ -236,30 +236,30 @@ static bool buffer_png_export(void* buffer, uint32_t width, uint32_t height, con
     png_write_end(png_ptr, NULL); //write end of PNG file
     png_destroy_write_struct(&png_ptr, &info_ptr); //free structures memory
     fclose(filehandle);
-    print_stderr("data wrote to '%s'.\n", filename);
+    print_stderr("Data wrote to '%s'.\n", filename);
     return true;
 }
 #endif
 
 static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filename, VC_RECT_T* image_rect_ptr){ //create dispmanx ressource from png file, return 0 on failure, ressource handle on success
     FILE* filehandle = fopen(filename, "rb");
-    if (filehandle == NULL){print_stderr("failed to read '%s'.\n", filename); return 0;} else {print_stderr("'%s' opened.\n", filename);}
+    if (filehandle == NULL){print_stderr("Failed to read '%s'.\n", filename); return 0;} else {print_stderr("'%s' opened.\n", filename);}
 
     png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); //allocate and initialize a png_struct structure
-    if (png_ptr == NULL){print_stderr("failed to init png_struct read structure.\n"); fclose(filehandle); return 0;}
+    if (png_ptr == NULL){print_stderr("Failed to init png_struct read structure.\n"); fclose(filehandle); return 0;}
 
     png_infop info_ptr = png_create_info_struct(png_ptr); //allocate and initialize a png_info structure
-    if (info_ptr == NULL){print_stderr("failed to init png_info structure.\n"); png_destroy_read_struct(&png_ptr, 0, 0); fclose(filehandle); return 0;}
+    if (info_ptr == NULL){print_stderr("Failed to init png_info structure.\n"); png_destroy_read_struct(&png_ptr, 0, 0); fclose(filehandle); return 0;}
     if (setjmp(png_jmpbuf(png_ptr))){print_stderr("setjmp png_jmpbuf failed.\n"); png_destroy_read_struct(&png_ptr, &info_ptr, 0); fclose(filehandle); return 0;}
 
     png_init_io(png_ptr, filehandle); //initialize input/output for the PNG file
     png_read_info(png_ptr, info_ptr); //read the PNG image information
 
     int width = png_get_image_width(png_ptr, info_ptr), height = png_get_image_height(png_ptr, info_ptr); //dimensions
-    if (width == 0 || height == 0){print_stderr("failed to get image size.\n"); png_destroy_read_struct(&png_ptr, &info_ptr, 0); fclose(filehandle); return 0;}
+    if (width == 0 || height == 0){print_stderr("Failed to get image size.\n"); png_destroy_read_struct(&png_ptr, &info_ptr, 0); fclose(filehandle); return 0;}
 
     png_byte color_type = png_get_color_type(png_ptr, info_ptr), bit_depth = png_get_bit_depth(png_ptr, info_ptr); //color type and depth
-    print_stderr("resolution: %dx%d depth:%dbits.\n", width, height, bit_depth*png_get_channels(png_ptr, info_ptr));
+    print_stderr("Resolution: %dx%d depth:%dbits.\n", width, height, bit_depth*png_get_channels(png_ptr, info_ptr));
 
     double gamma = .0; if (png_get_gAMA(png_ptr, info_ptr, &gamma)){png_set_gamma(png_ptr, 2.2, gamma);} //gamma correction, useful?
 
@@ -271,7 +271,7 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     }
     if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)){png_set_tRNS_to_alpha(png_ptr);} //convert tRNS chunks to alpha channels
     if (bit_depth == 16){png_set_scale_16(png_ptr);} //scale down 16bits to 8bits depth
-    if (!(color_type & PNG_COLOR_MASK_ALPHA)){png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER); print_stderr("dummy alpha channel added.\n");} //no alpha channel, add one
+    if (!(color_type & PNG_COLOR_MASK_ALPHA)){png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER); print_stderr("Dummy alpha channel added.\n");} //no alpha channel, add one
     png_read_update_info(png_ptr, info_ptr); //update png info structure
     color_type = png_get_color_type(png_ptr, info_ptr);
 
@@ -291,15 +291,15 @@ static DISPMANX_RESOURCE_HANDLE_T dispmanx_resource_create_from_png(char* filena
     VC_IMAGE_TYPE_T vc_type = (color_type & PNG_COLOR_MASK_ALPHA) ? VC_IMAGE_RGBA32 : VC_IMAGE_RGB888; //vc rgba or rgb format
     uint32_t vc_image_ptr; //no use in this case
     DISPMANX_RESOURCE_HANDLE_T resource = vc_dispmanx_resource_create(vc_type, width, height, &vc_image_ptr);
-    if (resource == 0){print_stderr("failed to create dispmanx resource.\n"); free(buffer); return 0;}
+    if (resource == 0){print_stderr("Failed to create dispmanx resource.\n"); free(buffer); return 0;}
 
     vc_dispmanx_rect_set(image_rect_ptr, 0, 0, width, height); //set rectangle struct data
     if (vc_dispmanx_resource_write_data(resource, vc_type, pitch, buffer, image_rect_ptr) != 0){
-        print_stderr("failed to write dispmanx resource.\n");
+        print_stderr("Failed to write dispmanx resource.\n");
         vc_dispmanx_resource_delete(resource); free(buffer); return 0;
     } else {free(buffer);}
 
-    print_stderr("dispmanx resource created, handle:%u.\n", resource);
+    print_stderr("DispmanX resource created, handle:%u.\n", resource);
     return resource;
 }
 
@@ -311,7 +311,7 @@ static void gpio_init(void){ //init gpio things
 
     #if defined(USE_WIRINGPI) //wiringPi library
         #define WIRINGPI_CODES 1 //allow error code return
-        int err; if ((err = wiringPiSetupGpio()) < 0){print_stderr("failed to initialize wiringPi, errno:%d.\n", -err); gpio_lib_failed = true;} //use BCM numbering
+        int err; if ((err = wiringPiSetupGpio()) < 0){print_stderr("Failed to initialize wiringPi, errno:%d.\n", -err); gpio_lib_failed = true;} //use BCM numbering
     #elif defined(USE_GPIOD) //gpiod library
         if ((gpiod_chip = gpiod_chip_open_lookup("0")) == NULL){print_stderr("gpiod_chip_open_lookup failed.\n"); gpio_lib_failed = true;}
     #else
@@ -323,7 +323,7 @@ static void gpio_init(void){ //init gpio things
         if (!gpio_lib_failed && gpio_enabled[i]){
             #if defined(USE_WIRINGPI) //wiringPi library
                 pinMode(*gpio_pin[i], INPUT);
-                print_stderr("using wiringPi to poll GPIO%d.\n", *gpio_pin[i]);
+                print_stderr("Using wiringPi to poll GPIO%d.\n", *gpio_pin[i]);
             #elif defined(USE_GPIOD) //gpiod library
                 sprintf(gpiod_consumer_name[i], "%s %d", program_name, *gpio_pin[i]);
                 if ((gpiod_input_line[i] = gpiod_chip_get_line(gpiod_chip, *gpio_pin[i])) == NULL){print_stderr("gpiod_chip_get_line failed for pin:%d.\n", *gpio_pin[i]); gpio_lib_failed = true;
@@ -331,7 +331,7 @@ static void gpio_init(void){ //init gpio things
                 } else if ((gpiod_fd[i] = gpiod_line_event_get_fd(gpiod_input_line[i])) < 0){print_stderr("gpiod_line_event_get_fd failed. errno:%d, consumer:'%s'.\n", -gpiod_fd[i], gpiod_consumer_name[i]); gpio_lib_failed = true;
                 } else {
                     fcntl(gpiod_fd[i], F_SETFL, fcntl(gpiod_fd[i], F_GETFL, 0) | O_NONBLOCK); //set gpiod fd to non blocking
-                    print_stderr("using libGPIOd to poll GPIO%d, chip:%s(%s), consumer:'%s'.\n", *gpio_pin[i], gpiod_chip_name(gpiod_chip), gpiod_chip_label(gpiod_chip), gpiod_consumer_name[i]);
+                    print_stderr("Using libGPIOd to poll GPIO%d, chip:%s(%s), consumer:'%s'.\n", *gpio_pin[i], gpiod_chip_name(gpiod_chip), gpiod_chip_label(gpiod_chip), gpiod_consumer_name[i]);
                 }
             #endif
         }
@@ -343,7 +343,7 @@ static void gpio_init(void){ //init gpio things
                 if (gpiod_input_line[i] != NULL){gpiod_line_release(gpiod_input_line[i]);} gpiod_fd[i] = -1;
             }
         #endif
-        if (access("/usr/bin/raspi-gpio", F_OK) == 0){print_stderr("falling back to '/usr/bin/raspi-gpio' program.\n"); gpio_external = true;}
+        if (access("/usr/bin/raspi-gpio", F_OK) == 0){print_stderr("Falling back to '/usr/bin/raspi-gpio' program.\n"); gpio_external = true;}
         for (int i=0; i<gpio_pins_count; i++){
             if (gpio_external){
                 if (gpio_enabled[i]){print_stderr("gpio%d\n", *gpio_pin[i]);}
@@ -413,9 +413,9 @@ static void osd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_ELEM
     if (osd_buffer_ptr == NULL){
         osd_buffer_ptr = calloc(1, osd_width * osd_height * 4);
         if (osd_buffer_ptr != NULL){
-            print_stderr("bitmap buffer created\n");
+            print_stderr("Bitmap buffer created\n");
             buffer_fill(osd_buffer_ptr, osd_width, osd_height, osd_color_bg);
-        } else if (debug){print_stderr("failed to create bitmap buffer\n");}
+        } else if (debug){print_stderr("Failed to create bitmap buffer\n");}
     }
 
     if (osd_buffer_ptr != NULL){ //valid bitmap buffer
@@ -689,9 +689,9 @@ static void tinyosd_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_
     if (tinyosd_buffer_ptr == NULL){
         tinyosd_buffer_ptr = calloc(1, osd_width * osd_height * 4);
         if (tinyosd_buffer_ptr != NULL){
-            print_stderr("bitmap buffer created\n");
+            print_stderr("Bitmap buffer created\n");
             buffer_fill(tinyosd_buffer_ptr, osd_width, osd_height, osd_color_bg);
-        } else if (debug){print_stderr("failed to create bitmap buffer\n");}
+        } else if (debug){print_stderr("Failed to create bitmap buffer\n");}
     }
 
     if (tinyosd_buffer_ptr != NULL){ //valid bitmap buffer
@@ -884,12 +884,12 @@ static void lowbatt_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_
     if (lowbat_buffer_ptr == NULL){
         lowbat_buffer_ptr = calloc(1, icon_width_16 * icon_height_16 * 4);
         if (lowbat_buffer_ptr != NULL){
-            print_stderr("bitmap buffer created\n");
+            print_stderr("Bitmap buffer created\n");
             VC_RECT_T tmp_rect = {.width=icon_width, .height=icon_height};
             vc_dispmanx_resource_read_data(resource, &tmp_rect, lowbat_buffer_ptr, icon_width_16 * 4);
             lowbat_icon_bar_color = buffer_getcolor_rgba(lowbat_buffer_ptr, icon_width_16, icon_height_16, 9, 13);
             lowbat_icon_bar_bg_color = buffer_getcolor_rgba(lowbat_buffer_ptr, icon_width_16, icon_height_16, 34, 13);
-        } else if (debug){print_stderr("failed to create bitmap buffer\n");}
+        } else if (debug){print_stderr("Failed to create bitmap buffer\n");}
     }
     
     if (lowbat_buffer_ptr != NULL){ //valid bitmap buffer
@@ -936,11 +936,11 @@ static void cputemp_build_element(DISPMANX_RESOURCE_HANDLE_T resource, DISPMANX_
     if (cputemp_buffer_ptr == NULL){
         cputemp_buffer_ptr = calloc(1, icon_width_16 * icon_height_16 * 4);
         if (cputemp_buffer_ptr != NULL){
-            print_stderr("bitmap buffer created\n");
+            print_stderr("Bitmap buffer created\n");
             VC_RECT_T tmp_rect = {.width=icon_width, .height=icon_height};
             vc_dispmanx_resource_read_data(resource, &tmp_rect, cputemp_buffer_ptr, icon_width_16 * 4);
             cputemp_icon_bg_color = buffer_getcolor_rgba(cputemp_buffer_ptr, icon_width_16, icon_height_16, 30, 13);
-        } else if (debug){print_stderr("failed to create bitmap buffer\n");}
+        } else if (debug){print_stderr("Failed to create bitmap buffer\n");}
     }
     
     if (cputemp_buffer_ptr != NULL){ //valid bitmap buffer
@@ -995,7 +995,7 @@ static int in_array_int(int* arr, int value, int arr_size){ //search in value in
 
 void evdev_check(double loop_start_time){ //evdev input check
     static bool evdev_init = false;
-    if (evdev_path[0] == '\0'){print_stderr("empty event device path, evdev disabled\n"); evdev_enabled = false; return;}
+    if (!evdev_init && evdev_path[0] == '\0'){print_stderr("Empty event device path, EVDEV disabled\n"); evdev_enabled = false; return;}
 
     //input sequence spliting
     static int osd_evdev_sequence_limit = 0;
@@ -1003,41 +1003,51 @@ void evdev_check(double loop_start_time){ //evdev input check
 
     #ifndef NO_OSD
         static int osd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
-        if (!evdev_init && osd_evdev_sequence_char[0] != '\0'){
-            print_stderr("osd sequence: ");
-            int index = 0;
-            char buffer[strlen(osd_evdev_sequence_char) + 1]; strcpy(buffer, osd_evdev_sequence_char);
-            char *tmp_ptr = strtok(buffer, ","); //split element
-            while (tmp_ptr != NULL){
-                if (strchr(tmp_ptr, 'x') == NULL){osd_evdev_sequence[index] = atoi(tmp_ptr);} else {sscanf(tmp_ptr, "0x%X", &osd_evdev_sequence[index]);} //int or hex value
-                fprintf(stderr, "%d ", osd_evdev_sequence[index]); index++;
-                if (index >= evdev_sequence_max){break;} //avoid overflow
-                tmp_ptr = strtok(NULL, ","); //next element
+        if (!evdev_init){
+            if (osd_evdev_sequence_char[0] == '-'){osd_evdev_sequence_char[0] = '\0';} //assime '-' char as first char as -1
+            if (osd_evdev_sequence_char[0] != '\0'){
+                print_stderr("OSD sequence: ");
+                int index = 0;
+                char buffer[strlen(osd_evdev_sequence_char) + 1]; strcpy(buffer, osd_evdev_sequence_char);
+                char *tmp_ptr = strtok(buffer, ","); //split element
+                while (tmp_ptr != NULL){
+                    if (strchr(tmp_ptr, 'x') == NULL){osd_evdev_sequence[index] = atoi(tmp_ptr);} else {sscanf(tmp_ptr, "0x%X", &osd_evdev_sequence[index]);} //int or hex value
+                    if (osd_evdev_sequence[index] == -1){osd_evdev_sequence[index] = 0;} else {fprintf(stderr, "%d ", osd_evdev_sequence[index]); index++;}
+                    if (index >= evdev_sequence_max){break;} //avoid overflow
+                    tmp_ptr = strtok(NULL, ","); //next element
+                }
+                osd_evdev_sequence_limit = index;
+                fprintf(stderr, "(%d)\n", index);
             }
-            osd_evdev_sequence_limit = index;
-            fprintf(stderr, "(%d)\n", index);
         }
     #endif
 
     #ifndef NO_TINYOSD
         static int tinyosd_evdev_sequence[evdev_sequence_max] = {0}; //int value of sequence, 0 will be interpreted as ignore, computed during runtime
-        if (!evdev_init && tinyosd_evdev_sequence_char[0] != '\0'){
-            print_stderr("tiny osd sequence: ");
-            int index = 0;
-            char buffer[strlen(tinyosd_evdev_sequence_char) + 1]; strcpy(buffer, tinyosd_evdev_sequence_char);
-            char *tmp_ptr = strtok(buffer, ","); //split element
-            while (tmp_ptr != NULL){
-                if (strchr(tmp_ptr, 'x') == NULL){tinyosd_evdev_sequence[index] = atoi(tmp_ptr);} else {sscanf(tmp_ptr, "0x%X", &tinyosd_evdev_sequence[index]);} //int or hex value
-                fprintf(stderr, "%d ", tinyosd_evdev_sequence[index]); index++;
-                if (index >= evdev_sequence_max){break;} //avoid overflow
-                tmp_ptr = strtok(NULL, ","); //next element
+        if (!evdev_init){
+            if (tinyosd_evdev_sequence_char[0] == '-'){tinyosd_evdev_sequence_char[0] = '\0';} //assime '-' char as first char as -1
+            if (tinyosd_evdev_sequence_char[0] != '\0'){
+                print_stderr("Tiny OSD sequence: ");
+                int index = 0;
+                char buffer[strlen(tinyosd_evdev_sequence_char) + 1]; strcpy(buffer, tinyosd_evdev_sequence_char);
+                char *tmp_ptr = strtok(buffer, ","); //split element
+                while (tmp_ptr != NULL){
+                    if (strchr(tmp_ptr, 'x') == NULL){tinyosd_evdev_sequence[index] = atoi(tmp_ptr);} else {sscanf(tmp_ptr, "0x%X", &tinyosd_evdev_sequence[index]);} //int or hex value
+                    if (tinyosd_evdev_sequence[index] == -1){tinyosd_evdev_sequence[index] = 0;} else {fprintf(stderr, "%d ", tinyosd_evdev_sequence[index]); index++;}
+                    if (index >= evdev_sequence_max){break;} //avoid overflow
+                    tmp_ptr = strtok(NULL, ","); //next element
+                }
+                tinyosd_evdev_sequence_limit = index;
+                fprintf(stderr, "(%d)\n", index);
             }
-            tinyosd_evdev_sequence_limit = index;
-            fprintf(stderr, "(%d)\n", index);
         }
     #endif
 
-    if (!evdev_init && osd_evdev_sequence_limit == 0 && tinyosd_evdev_sequence_limit == 0){print_stderr("no valid event sequence detected, evdev disabled\n"); evdev_enabled = false; return;}
+    if (!evdev_init){
+        if (osd_evdev_sequence_limit == 0 && tinyosd_evdev_sequence_limit == 0){print_stderr("No valid event sequence detected, EVDEV disabled\n"); evdev_enabled = false; return;
+        } else if (osd_evdev_sequence_limit == 0){print_stderr("OSD sequence disabled\n");
+        } else if (tinyosd_evdev_sequence_limit == 0){print_stderr("Tiny OSD sequence disabled\n");}
+    }
 
     //event input
     static int evdev_path_len;
@@ -1067,7 +1077,7 @@ void evdev_check(double loop_start_time){ //evdev input check
                     int folder_files = scandir(evdev_path, &folder_list, 0, 0);
                     if (folder_files != -1){
                         bool scan_mode = evdev_name_search[0] == '\0';
-                        if (scan_mode){print_stderr("no event device name provided, falling back to scan mode\n");}
+                        if (scan_mode){print_stderr("No event device name provided, falling back to scan mode\n");}
                         for (int i = 0; i < folder_files; i++){
                             char* evdev_file_tmp = folder_list[i]->d_name;
                             if (evdev_file_tmp[0] == '.'){continue;} //ignore hidden files
@@ -1081,29 +1091,29 @@ void evdev_check(double loop_start_time){ //evdev input check
                             }
                         }
                         free(folder_list);
-                        if (scan_mode){print_stderr("scan finished\n"); evdev_retry = false;}
+                        if (scan_mode){print_stderr("Scan finished\n"); evdev_retry = false;}
                     } else if (debug){print_stderr("'%s' folder is empty\n", evdev_path);}
                 } else if (S_ISREG(evdev_stat.st_mode)){ //given path is a file
                     evdev_fd = open(evdev_path, O_RDONLY);
-                    if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path);} //failed to open file
+                    if (evdev_fd < 0){if (debug){print_stderr("Failed to open '%s'\n", evdev_path);} //failed to open file
                     } else {
                         ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); close(evdev_fd); //get device name
                         if (evdev_name[0] != '\0'){
                             strncpy(evdev_path_used, evdev_path, sizeof(evdev_path_used));
                             strncpy(evdev_name_search, evdev_name, sizeof(evdev_name_search));
-                        } else {if (debug){print_stderr("failed to detect device name for '%s'\n", evdev_path);} evdev_retry = false;}
+                        } else {if (debug){print_stderr("Failed to detect device name for '%s'\n", evdev_path);} evdev_retry = false;}
                     }
-                } else if (debug){print_stderr("invalid file type for '%s'\n", evdev_path); evdev_retry = false;}
-            } else if (debug){print_stderr("failed to open '%s'\n", evdev_path);}
+                } else if (debug){print_stderr("Invalid file type for '%s'\n", evdev_path); evdev_retry = false;}
+            } else if (debug){print_stderr("Failed to open '%s'\n", evdev_path);}
         }
         evdev_fd = -1;
 
         if (evdev_path_used[0] != '\0'){ //"valid" device found
             evdev_fd = open(evdev_path_used, O_RDONLY);
-            if (evdev_fd < 0){if (debug){print_stderr("failed to open '%s'\n", evdev_path_used);} //failed to open file
+            if (evdev_fd < 0){if (debug){print_stderr("Failed to open '%s'\n", evdev_path_used);} //failed to open file
             } else {
                 evdev_name[0] = '\0'; ioctl(evdev_fd, EVIOCGNAME(sizeof(evdev_name)), evdev_name); //get device name
-                if (evdev_name[0] == '\0'){if (debug){print_stderr("failed to get device name for '%s'\n", evdev_path_used);} close(evdev_fd); evdev_fd = -1;
+                if (evdev_name[0] == '\0'){if (debug){print_stderr("Failed to get device name for '%s'\n", evdev_path_used);} close(evdev_fd); evdev_fd = -1;
                 } else {
                     fcntl(evdev_fd, F_SETFL, fcntl(evdev_fd, F_GETFL) | O_NONBLOCK); //set fd to non blocking
                     if (debug){print_stderr("'%s' will be used for '%s' device\n", evdev_path_used, evdev_name);}
@@ -1112,8 +1122,8 @@ void evdev_check(double loop_start_time){ //evdev input check
         }
 
         if (evdev_fd == -1){
-            if (evdev_name_search[0] != '\0' && debug){print_stderr("can't poll from '%s' device\n", evdev_name_search);}
-            if (evdev_retry){if (debug){print_stderr("retry in %ds\n", evdev_check_interval);}} else {print_stderr("evdev disabled\n"); evdev_enabled = false; return;}
+            if (evdev_name_search[0] != '\0' && debug){print_stderr("Can't poll from '%s' device\n", evdev_name_search);}
+            if (evdev_retry){if (debug){print_stderr("Retry in %ds\n", evdev_check_interval);}} else {print_stderr("Evdev disabled\n"); evdev_enabled = false; return;}
         }
 
         recheck_start_time = loop_start_time;
@@ -1124,13 +1134,13 @@ void evdev_check(double loop_start_time){ //evdev input check
     } else {
         int events_read = read(evdev_fd, &events, events_size);
         if (errno == ENODEV || errno == ENOENT || errno == EBADF){
-            if (debug){print_stderr("failed to read from device '%s' (%s), try to reopen in %ds\n", evdev_name_search, evdev_path_used, evdev_check_interval);}
+            if (debug){print_stderr("Failed to read from device '%s' (%s), try to reopen in %ds\n", evdev_name_search, evdev_path_used, evdev_check_interval);}
             close(evdev_fd); evdev_fd = -1; return;
         } else if (events_read >= input_event_size){
             if (evdev_detected_start > 0. && loop_start_time - evdev_detected_start > evdev_sequence_detect_interval){ //reset sequence
                 memset(evdev_detected_sequence, 0, sizeof(evdev_detected_sequence));
                 evdev_detected_sequence_index = 0; evdev_detected_start = -1.;
-                if (debug){print_stderr("sequence timer reset\n");}
+                if (debug){print_stderr("Sequence timer reset\n");}
             }
 
             for (int i = 0; i < events_read / input_event_size; i++){
@@ -1150,7 +1160,7 @@ void evdev_check(double loop_start_time){ //evdev input check
                 if (tmp_code != 0 && events[i].value != 0 && (code_osd_detect || code_tinyosd_detect)){ //keycode in osd or tiny osd sequence
                     if (evdev_detected_start < 0.){ //check not started
                         evdev_detected_start = loop_start_time;
-                        if (debug){print_stderr("sequence timer start\n");}
+                        if (debug){print_stderr("Sequence timer start\n");}
                     }
                     if (loop_start_time - evdev_detected_start <= evdev_sequence_detect_interval && in_array_int(evdev_detected_sequence, tmp_code, evdev_sequence_max * 2) == -1){ //still in detection interval and not in detected sequence
                         evdev_detected_sequence[evdev_detected_sequence_index++] = tmp_code;
@@ -1165,7 +1175,7 @@ void evdev_check(double loop_start_time){ //evdev input check
                         int tmp_detected_count = 0;
                         for (int i = 0; i < osd_evdev_sequence_limit; i++){if (osd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, osd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check osd trigger
                         if (tmp_detected_count == osd_evdev_sequence_limit){
-                            if (debug){print_stderr("osd triggered\n");}
+                            if (debug){print_stderr("Tiny OSD triggered\n");}
                             if (tinyosd_start_time < 0.){osd_start_time = loop_start_time;} else {osd_hold = true;}
                             evdev_detected_start = 1.; //1. on purpose, does reset sequence on next loop
                         }
@@ -1178,7 +1188,7 @@ void evdev_check(double loop_start_time){ //evdev input check
                         #endif
                         for (int i = 0; i < tinyosd_evdev_sequence_limit; i++){if (tinyosd_evdev_sequence[i] != 0 && in_array_int(evdev_detected_sequence, tinyosd_evdev_sequence[i], evdev_sequence_max * 2) != -1){tmp_detected_count++;}} //check tiny osd trigger
                         if (tmp_detected_count == tinyosd_evdev_sequence_limit){
-                            if (debug){print_stderr("osd triggered\n");}
+                            if (debug){print_stderr("OSD triggered\n");}
                             if (osd_start_time < 0.){tinyosd_start_time = loop_start_time;} else {tinyosd_hold = true;}
                             evdev_detected_start = 1.; //1. on purpose, does reset sequence on next loop
                         }
@@ -1195,7 +1205,7 @@ void evdev_check(double loop_start_time){ //evdev input check
 static bool html_to_uint32_color(char* html_color, uint32_t* rgba){ //convert html color (3/4 or 6/8 hex) to uint32_t (alpha, blue, green, red)
     int len = strlen(html_color);
     if (!(len==3 || len==4 || len==6 || len==8)){ //invalid format
-        print_stderr("invalid html color input '%s', length:%d (expect 3,4 for one hex per color. 6,8 for 2 hex).\n", html_color, len);
+        print_stderr("Invalid html color input '%s', length:%d (expect 3,4 for one hex per color. 6,8 for 2 hex).\n", html_color, len);
         *rgba = 0; return false;
     }
 
@@ -1268,7 +1278,7 @@ static void program_get_path(char** args, char* path, char* program){ //get curr
     }
     if (strcmp(path, "./.") == 0){getcwd(path, PATH_MAX);}
     chdir(path); //useful?
-    if (debug){print_stderr("program path:'%s'.\n", path);}
+    if (debug){print_stderr("Program path:'%s'.\n", path);}
 }
 
 static void program_usage(void){ //display help
@@ -1314,10 +1324,10 @@ static void program_usage(void){ //display help
     "\t-evdev_detect_interval <NUM> (input sequence detection timeout in millisec. Default:'%d').\n"
     , evdev_path, evdev_name_search, evdev_check_interval, evdev_sequence_detect_interval_ms);
 #ifndef NO_OSD
-    fprintf(stderr,"\t-evdev_osd_sequence <KEYCODE,KEYCODE,...> (OSD trigger sequence. Default:'%s').\n", osd_evdev_sequence_char);
+    fprintf(stderr,"\t-evdev_osd_sequence <KEYCODE,KEYCODE,...> (OSD trigger sequence. -1 to disable. Default:'%s').\n", osd_evdev_sequence_char);
 #endif
 #ifndef NO_TINYOSD
-    fprintf(stderr,"\t-evdev_tinyosd_sequence <KEYCODE,KEYCODE,...> (Tiny OSD trigger sequence. Default:'%s').\n", tinyosd_evdev_sequence_char);
+    fprintf(stderr,"\t-evdev_tinyosd_sequence <KEYCODE,KEYCODE,...> (Tiny OSD trigger sequence. -1 to disable. Default:'%s').\n", tinyosd_evdev_sequence_char);
 #endif
 #endif
 
@@ -1548,15 +1558,17 @@ int main(int argc, char *argv[]){
     atexit(program_close); at_quick_exit(program_close); //run on program exit
 
     #ifdef NO_SIGNAL
-        print_stderr("osd trigger using signal disabled at compilation time.\n");
+        print_stderr("Signal triggering disabled at compilation time.\n");
     #endif
     #ifdef NO_SIGNAL_FILE
-        print_stderr("osd trigger using file disabled at compilation time.\n");
+        print_stderr("Signal file triggering disabled at compilation time.\n");
     #endif
     #ifdef NO_EVDEV
-        print_stderr("osd trigger using evdev disabled at compilation time.\n");
+        print_stderr("EVDEV triggering disabled at compilation time.\n");
     #endif
-
+    #ifdef NO_GPIO
+        print_stderr("GPIO features disabled at compilation time.\n");
+    #endif
 
     //bcm init
     bcm_host_init();
@@ -1564,7 +1576,7 @@ int main(int argc, char *argv[]){
     //get display handle
     dispmanx_display = vc_dispmanx_display_open(display_number);
     if (dispmanx_display == 0){print_stderr("FATAL: vc_dispmanx_display_open(%d) failed, returned %d.\n", display_number, dispmanx_display); return EXIT_FAILURE;
-    } else {print_stderr("dispmanx display %d, handle:%u.\n", display_number, dispmanx_display);}
+    } else {print_stderr("DispmanX display %d, handle:%u.\n", display_number, dispmanx_display);}
 
     //get display infos
     DISPMANX_MODEINFO_T dispmanx_display_info; uint32_t display_width = 0, display_height = 0;
@@ -1572,7 +1584,7 @@ int main(int argc, char *argv[]){
         print_stderr("FATAL: vc_dispmanx_display_get_info() failed.\n"); return EXIT_FAILURE;
     } else {
         display_width = dispmanx_display_info.width, display_height = dispmanx_display_info.height;
-        print_stderr("display info: ");
+        print_stderr("Display info: ");
         fprintf(stderr, "width:%d, ", display_width);
         fprintf(stderr, "height:%d, ", display_height);
         fprintf(stderr, "format:%d:", dispmanx_display_info.input_format);
@@ -1583,18 +1595,18 @@ int main(int argc, char *argv[]){
     DISPMANX_UPDATE_HANDLE_T dispmanx_update = vc_dispmanx_update_start(0);
     if (dispmanx_update == 0){print_stderr("FATAL: vc_dispmanx_update_start() test failed.\n"); return EXIT_FAILURE;}
     if (vc_dispmanx_update_submit_sync(dispmanx_update) != 0){print_stderr("FATAL: vc_dispmanx_update_submit_sync(%u) test failed.\n", dispmanx_update); return EXIT_FAILURE;}
-    print_stderr("dispmanx update test successful.\n");
+    print_stderr("DispmanX update test successful.\n");
 
     //convert html colors to usable colors
-    if (!html_to_uint32_color(osd_color_bg_str, &osd_color_bg)){print_stderr("warning, invalid -bg_color argument.\n"); //background raw color
+    if (!html_to_uint32_color(osd_color_bg_str, &osd_color_bg)){print_stderr("Warning, invalid -bg_color argument.\n"); //background raw color
     } else { //text color backgound with half transparent to increase text contrast
         osd_color_text_bg = osd_color_bg;
         uint8_t *osd_color_text_bg_ptr = (uint8_t*)&osd_color_text_bg;
         *(osd_color_text_bg_ptr + 3) += (255 - *(osd_color_text_bg_ptr + 3)) / 2;
     }
-    if (!html_to_uint32_color(osd_color_warn_str, &osd_color_warn)){print_stderr("warning, invalid -warn_color argument.\n");} //warning text raw color
-    if (!html_to_uint32_color(osd_color_crit_str, &osd_color_crit)){print_stderr("warning, invalid -crit_color argument.\n");} //critical text raw color
-    if (!html_to_uint32_color(osd_color_text_str, &osd_color_text)){print_stderr("warning, invalid -text_color argument.\n"); //text raw color
+    if (!html_to_uint32_color(osd_color_warn_str, &osd_color_warn)){print_stderr("Warning, invalid -warn_color argument.\n");} //warning text raw color
+    if (!html_to_uint32_color(osd_color_crit_str, &osd_color_crit)){print_stderr("Warning, invalid -crit_color argument.\n");} //critical text raw color
+    if (!html_to_uint32_color(osd_color_text_str, &osd_color_text)){print_stderr("Warning, invalid -text_color argument.\n"); //text raw color
     } else { //compute separator color text to bg midpoint
         uint8_t *osd_color_separator_ptr = (uint8_t*)&osd_color_separator, *osd_color_text_ptr = (uint8_t*)&osd_color_text, *osd_color_bg_ptr = (uint8_t*)&osd_color_bg;
         for (uint8_t i=0; i<4; i++){
@@ -1603,10 +1615,8 @@ int main(int argc, char *argv[]){
         }
     }
 
-    #ifndef NO_GPIO //gpio
+    #ifndef NO_GPIO
         if (lowbat_gpio > -1 || osd_gpio > -1 || tinyosd_gpio > -1){gpio_init();}
-    #else
-        print_stderr("gpio features disabled at compilation time.\n");
     #endif
 
     //warning icons
@@ -1631,10 +1641,10 @@ int main(int argc, char *argv[]){
             } else {icons_x[icon_index] = display_width - icons_padding - icons_width[icon_index];} //right alignement
             icons_org_width[icon_index] = lowbat_rect.width; icons_org_height[icon_index] = lowbat_rect.height; //backup original resolution
             vc_dispmanx_rect_set(&lowbat_rect, 0, 0, lowbat_rect.width << 16, lowbat_rect.height << 16);
-        } else {print_stderr("low battery icon disabled\n");}
+        } else {print_stderr("Low battery icon disabled\n");}
         icon_index++;
     #else
-        print_stderr("low battery icon disabled at compilation time.\n");
+        print_stderr("Low battery icon disabled at compilation time.\n");
     #endif
 
     #ifndef NO_CPU_ICON //cpu temperature icon:1
@@ -1648,21 +1658,21 @@ int main(int argc, char *argv[]){
             } else {icons_x[icon_index] = display_width - icons_padding - icons_width[icon_index];} //right alignement
             icons_org_width[icon_index] = cputemp_rect.width; icons_org_height[icon_index] = cputemp_rect.height; //backup original resolution
             vc_dispmanx_rect_set(&cputemp_rect, 0, 0, cputemp_rect.width << 16, cputemp_rect.height << 16);
-        } else {print_stderr("cpu temperature warning icon disabled\n");}
+        } else {print_stderr("CPU temperature warning icon disabled\n");}
         icon_index++;
     #else
-        print_stderr("cpu overheat icon disabled at compilation time.\n");
+        print_stderr("CPU overheat icon disabled at compilation time.\n");
     #endif
 
     //osd
     #ifndef NO_OSD
         double osd_scaling = (double)display_height / (osd_text_padding * 2 + osd_max_lines * RASPIDMX_FONT_HEIGHT);
         int osd_width = ALIGN_TO_16((int)(display_width / osd_scaling)), osd_height = ALIGN_TO_16((int)(display_height / osd_scaling));
-        print_stderr("osd resolution: %dx%d (%.4lfx)\n", osd_width, osd_height, (double)osd_width/display_width);
+        print_stderr("OSD resolution: %dx%d (%.4lfx)\n", osd_width, osd_height, (double)osd_width/display_width);
         DISPMANX_ELEMENT_HANDLE_T osd_element = 0;
         DISPMANX_RESOURCE_HANDLE_T osd_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, osd_width, osd_height, &vc_image_ptr);
     #else
-        print_stderr("full screen osd disabled at compilation time.\n");
+        print_stderr("Full screen OSD disabled at compilation time.\n");
     #endif
 
     //tiny osd
@@ -1670,16 +1680,16 @@ int main(int argc, char *argv[]){
         int tinyosd_y = 0, tinyosd_height_dest = (double)display_height * ((double)tinyosd_height_percent / 100);
         double tinyosd_scaling = (double)tinyosd_height_dest / RASPIDMX_FONT_HEIGHT;
         int tinyosd_width = ALIGN_TO_16((int)((double)display_width / tinyosd_scaling)), tinyosd_height = ALIGN_TO_16(RASPIDMX_FONT_HEIGHT);
-        print_stderr("tiny osd resolution: %dx%d (%.4lf)\n", tinyosd_width, tinyosd_height, tinyosd_scaling);
+        print_stderr("Tiny OSD resolution: %dx%d (%.4lf)\n", tinyosd_width, tinyosd_height, tinyosd_scaling);
         DISPMANX_ELEMENT_HANDLE_T tinyosd_element = 0;
         DISPMANX_RESOURCE_HANDLE_T tinyosd_resource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, tinyosd_width, tinyosd_height, &vc_image_ptr);
         if (tinyosd_resource > 0 && tinyosd_pos_str[0]=='b'){tinyosd_y = display_height - tinyosd_height_dest;} //footer alignment
     #else
-        print_stderr("tiny osd disabled at compilation time.\n");
+        print_stderr("Tiny OSD disabled at compilation time.\n");
     #endif
 
     //main loop
-    print_stderr("starting main loop\n");
+    print_stderr("Starting main loop\n");
 
     double osd_update_interval = 1. / osd_check_rate;
     double gpio_check_start_time = -1, sec_check_start_time = -1.; //gpio, seconds interval check start time

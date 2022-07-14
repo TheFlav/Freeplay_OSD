@@ -87,7 +87,7 @@ bool cputemp_celsius = true; //display cpu temperature in celsius
 
 //battery data
 #ifndef NO_GPIO
-    int lowbat_gpio = 10; //gpio pin, -1 to disable
+    int lowbat_gpio = -1; //gpio pin, -1 to disable
     bool lowbat_gpio_reversed = true; //gpio pin active low
 #endif
 char battery_rsoc_path[PATH_MAX] = "/sys/class/power_supply/battery/capacity"; //absolute path to battery rsoc

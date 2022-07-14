@@ -1,8 +1,9 @@
 #!/bin/bash
 
-SERVICE_FILE=fp_osd-freeplayzero2.service
+SERVICE_FILE=fp_osd-freeplayzero2.service #service file to check and remove
+
 if [ ! -f "/lib/systemd/system/$SERVICE_FILE" ]; then
-    echo "/lib/systemd/system/$SERVICE_FILE is missing, nothing to uninstall."
+    echo "ERROR: /lib/systemd/system/$SERVICE_FILE is missing, nothing to uninstall."
     exit 0
 fi
 

@@ -131,8 +131,8 @@ Use ``libpng.a``, ``libz.a`` and ``libm.a`` instead of ``-lpng`` for static vers
     * ``-evdev_device <NAME>`` : Device to search if ``-evdev_path`` argument is a folder.  
     * ``-evdev_failure_interval <NUM>`` : Retry interval if input device failed (10 by default).  
     * ``-evdev_detect_interval <NUM>`` : Input sequence detection timeout in millisec (200 by default).  
-    * ``-evdev_osd_sequence <KEYCODE,KEYCODE,...>`` (!NO_OSD) : OSD trigger sequence (``0x13c,0x136,0x137`` by default).  
-    * ``-evdev_tinyosd_sequence <KEYCODE,KEYCODE,...>`` (!NO_TINYOSD) : Tiny OSD trigger sequence (``0x13c,0x138,0x139`` by default).  
+    * ``-evdev_osd_sequence <KEYCODE,KEYCODE,...>`` (!NO_OSD) : OSD trigger sequence, set to -1 to disable (``0x13c,0x136,0x137`` by default).  
+    * ``-evdev_tinyosd_sequence <KEYCODE,KEYCODE,...>`` (!NO_TINYOSD) : Tiny OSD trigger sequence, set to -1 to disable (``0x13c,0x138,0x139`` by default).  
     <br>
 
   - OSD display (!NO_OSD) :  
